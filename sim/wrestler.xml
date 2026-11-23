@@ -1,0 +1,85 @@
+<mujoco model="wrestler"><compiler angle="degree" meshdir="."/>
+<option timestep="0.001" integrator="implicitfast"/>
+<asset><mesh name="p0" file="meshes/p0.stl" scale="0.001 0.001 0.001"/><mesh name="p1" file="meshes/p1.stl" scale="0.001 0.001 0.001"/><mesh name="p2" file="meshes/p2.stl" scale="0.001 0.001 0.001"/><mesh name="p3" file="meshes/p3.stl" scale="0.001 0.001 0.001"/><mesh name="p4" file="meshes/p4.stl" scale="0.001 0.001 0.001"/><mesh name="p5" file="meshes/p5.stl" scale="0.001 0.001 0.001"/><mesh name="p6" file="meshes/p6.stl" scale="0.001 0.001 0.001"/><mesh name="p7" file="meshes/p7.stl" scale="0.001 0.001 0.001"/><mesh name="p8" file="meshes/p8.stl" scale="0.001 0.001 0.001"/><mesh name="p9" file="meshes/p9.stl" scale="0.001 0.001 0.001"/><mesh name="p10" file="meshes/p10.stl" scale="0.001 0.001 0.001"/><mesh name="p11" file="meshes/p11.stl" scale="0.001 0.001 0.001"/><mesh name="p12" file="meshes/p12.stl" scale="0.001 0.001 0.001"/><mesh name="p13" file="meshes/p13.stl" scale="0.001 0.001 0.001"/><mesh name="p14" file="meshes/p14.stl" scale="0.001 0.001 0.001"/><mesh name="p15" file="meshes/p15.stl" scale="0.001 0.001 0.001"/><mesh name="p16" file="meshes/p16.stl" scale="0.001 0.001 0.001"/><mesh name="p17" file="meshes/p17.stl" scale="0.001 0.001 0.001"/><mesh name="p18" file="meshes/p18.stl" scale="0.001 0.001 0.001"/><mesh name="p19" file="meshes/p19.stl" scale="0.001 0.001 0.001"/><mesh name="p20" file="meshes/p20.stl" scale="0.001 0.001 0.001"/><mesh name="p21" file="meshes/p21.stl" scale="0.001 0.001 0.001"/><mesh name="p22" file="meshes/p22.stl" scale="0.001 0.001 0.001"/><mesh name="p23" file="meshes/p23.stl" scale="0.001 0.001 0.001"/><mesh name="p24" file="meshes/p24.stl" scale="0.001 0.001 0.001"/><mesh name="p25" file="meshes/p25.stl" scale="0.001 0.001 0.001"/><mesh name="p26" file="meshes/p26.stl" scale="0.001 0.001 0.001"/><mesh name="p27" file="meshes/p27.stl" scale="0.001 0.001 0.001"/><mesh name="p28" file="meshes/p28.stl" scale="0.001 0.001 0.001"/><mesh name="p29" file="meshes/p29.stl" scale="0.001 0.001 0.001"/><mesh name="p30" file="meshes/p30.stl" scale="0.001 0.001 0.001"/><mesh name="p31" file="meshes/p31.stl" scale="0.001 0.001 0.001"/><mesh name="p32" file="meshes/p32.stl" scale="0.001 0.001 0.001"/><mesh name="p33" file="meshes/p33.stl" scale="0.001 0.001 0.001"/><mesh name="p34" file="meshes/p34.stl" scale="0.001 0.001 0.001"/><mesh name="p35" file="meshes/p35.stl" scale="0.001 0.001 0.001"/><mesh name="p36" file="meshes/p36.stl" scale="0.001 0.001 0.001"/><mesh name="p37" file="meshes/p37.stl" scale="0.001 0.001 0.001"/><mesh name="p38" file="meshes/p38.stl" scale="0.001 0.001 0.001"/><mesh name="p39" file="meshes/p39.stl" scale="0.001 0.001 0.001"/><mesh name="p40" file="meshes/p40.stl" scale="0.001 0.001 0.001"/><mesh name="p41" file="meshes/p41.stl" scale="0.001 0.001 0.001"/><mesh name="p42" file="meshes/p42.stl" scale="0.001 0.001 0.001"/><mesh name="p43" file="meshes/p43.stl" scale="0.001 0.001 0.001"/><mesh name="p44" file="meshes/p44.stl" scale="0.001 0.001 0.001"/><mesh name="p45" file="meshes/p45.stl" scale="0.001 0.001 0.001"/><mesh name="p46" file="meshes/p46.stl" scale="0.001 0.001 0.001"/><mesh name="p47" file="meshes/p47.stl" scale="0.001 0.001 0.001"/><mesh name="p48" file="meshes/p48.stl" scale="0.001 0.001 0.001"/><mesh name="p49" file="meshes/p49.stl" scale="0.001 0.001 0.001"/><mesh name="p50" file="meshes/p50.stl" scale="0.001 0.001 0.001"/><mesh name="p51" file="meshes/p51.stl" scale="0.001 0.001 0.001"/><mesh name="p52" file="meshes/p52.stl" scale="0.001 0.001 0.001"/><mesh name="p53" file="meshes/p53.stl" scale="0.001 0.001 0.001"/><mesh name="p54" file="meshes/p54.stl" scale="0.001 0.001 0.001"/><mesh name="p55" file="meshes/p55.stl" scale="0.001 0.001 0.001"/></asset>
+<worldbody><light pos="0 0 1" dir="0 0 -1"/><geom type="plane" size="1 1 .1" rgba=".9 .9 .9 1" friction="1 .005 .0001"/>
+<body name="base" pos="0 0 0.14602">
+<freejoint/>
+<geom type="mesh" mesh="p0" pos="-0.000000 -0.000000 -0.000000" mass="0.000035" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p1" pos="-0.000000 -0.000000 -0.000000" mass="0.001762" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p2" pos="-0.000000 -0.000000 -0.000000" mass="0.015601" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p3" pos="-0.000000 -0.000000 -0.000000" mass="0.000035" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p4" pos="-0.000000 -0.000000 -0.000000" mass="0.000137" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p5" pos="-0.000000 -0.000000 -0.000000" mass="0.013621" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p6" pos="-0.000000 -0.000000 -0.000000" mass="0.013400" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p7" pos="-0.000000 -0.000000 -0.000000" mass="0.000137" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p8" pos="-0.000000 -0.000000 -0.000000" mass="0.013400" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p26" pos="-0.000000 -0.000000 -0.000000" mass="0.000131" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p34" pos="-0.000000 -0.000000 -0.000000" mass="0.000131" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p55" pos="-0.000000 -0.000000 -0.000000" mass="0.001762" rgba=".53 .53 .5 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<body name="L_yaw" pos="-0.046585 -0.004859 0.000000"><joint name="L_yaw" axis="0 0 1" range="-90 90" damping="0.002" armature="1e-5"/>
+<geom type="mesh" mesh="p44" pos="0.046585 0.004859 -0.000000" mass="0.000308" rgba=".33 .29 .72 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p48" pos="0.046585 0.004859 -0.000000" mass="0.001832" rgba=".33 .29 .72 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p54" pos="0.046585 0.004859 -0.000000" mass="0.005961" rgba=".33 .29 .72 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<body name="L_thigh" pos="0.010550 0.000000 -0.014213"><joint name="L_thigh" axis="1 0 0" range="-90 90" damping="0.002" armature="1e-5"/>
+<geom type="mesh" mesh="p37" pos="0.036035 0.004859 0.014213" mass="0.009126" rgba=".11 .62 .46 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p39" pos="0.036035 0.004859 0.014213" mass="0.000035" rgba=".11 .62 .46 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p47" pos="0.036035 0.004859 0.014213" mass="0.000035" rgba=".11 .62 .46 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p50" pos="0.036035 0.004859 0.014213" mass="0.013400" rgba=".11 .62 .46 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p53" pos="0.036035 0.004859 0.014213" mass="0.013400" rgba=".11 .62 .46 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<body name="L_shin" pos="0.000000 -0.001214 -0.040334"><joint name="L_shin" axis="1 0 0" range="-90 90" damping="0.002" armature="1e-5"/>
+<geom type="mesh" mesh="p35" pos="0.036035 0.006073 0.054546" mass="0.008284" rgba=".85 .35 .19 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p38" pos="0.036035 0.006073 0.054546" mass="0.000308" rgba=".85 .35 .19 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p52" pos="0.036035 0.006073 0.054546" mass="0.000308" rgba=".85 .35 .19 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<body name="L_ankle" pos="-0.019250 0.000666 -0.054996"><joint name="L_ankle" axis="1 0 0" range="-90 90" damping="0.002" armature="1e-5"/>
+<geom type="mesh" mesh="p40" pos="0.055285 0.005407 0.109542" mass="0.013400" rgba=".83 .33 .49 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p41" pos="0.055285 0.005407 0.109542" mass="0.000308" rgba=".83 .33 .49 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p42" pos="0.055285 0.005407 0.109542" mass="0.000035" rgba=".83 .33 .49 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p46" pos="0.055285 0.005407 0.109542" mass="0.006296" rgba=".83 .33 .49 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<body name="L_foot" pos="0.014500 -0.004561 -0.022067"><joint name="L_foot" axis="0 1 0" range="-90 90" damping="0.002" armature="1e-5"/>
+<geom type="mesh" mesh="p32" pos="0.040785 0.009968 0.131609" mass="0.004871" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p33" pos="0.040785 0.009968 0.131609" mass="0.004357" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p36" pos="0.040785 0.009968 0.131609" mass="0.000035" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p43" pos="0.040785 0.009968 0.131609" mass="0.000035" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p45" pos="0.040785 0.009968 0.131609" mass="0.004537" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p49" pos="0.040785 0.009968 0.131609" mass="0.013400" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p51" pos="0.040785 0.009968 0.131609" mass="0.000035" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+</body>
+</body>
+</body>
+</body>
+</body>
+<body name="R_yaw" pos="0.010415 -0.004859 0.000000"><joint name="R_yaw" axis="0 0 1" range="-90 90" damping="0.002" armature="1e-5"/>
+<geom type="mesh" mesh="p21" pos="-0.010415 0.004859 -0.000000" mass="0.005961" rgba=".33 .29 .72 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p25" pos="-0.010415 0.004859 -0.000000" mass="0.000308" rgba=".33 .29 .72 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p30" pos="-0.010415 0.004859 -0.000000" mass="0.001832" rgba=".33 .29 .72 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<body name="R_thigh" pos="-0.010550 0.000000 -0.014213"><joint name="R_thigh" axis="1 0 0" range="-90 90" damping="0.002" armature="1e-5"/>
+<geom type="mesh" mesh="p10" pos="0.000135 0.004859 0.014213" mass="0.000035" rgba=".11 .62 .46 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p12" pos="0.000135 0.004859 0.014213" mass="0.000035" rgba=".11 .62 .46 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p15" pos="0.000135 0.004859 0.014213" mass="0.013400" rgba=".11 .62 .46 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p19" pos="0.000135 0.004859 0.014213" mass="0.013400" rgba=".11 .62 .46 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p22" pos="0.000135 0.004859 0.014213" mass="0.009126" rgba=".11 .62 .46 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<body name="R_shin" pos="0.000000 -0.001214 -0.040334"><joint name="R_shin" axis="1 0 0" range="-90 90" damping="0.002" armature="1e-5"/>
+<geom type="mesh" mesh="p14" pos="0.000135 0.006073 0.054546" mass="0.000308" rgba=".85 .35 .19 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p24" pos="0.000135 0.006073 0.054546" mass="0.000308" rgba=".85 .35 .19 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p28" pos="0.000135 0.006073 0.054546" mass="0.008284" rgba=".85 .35 .19 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<body name="R_ankle" pos="0.019250 0.000666 -0.054996"><joint name="R_ankle" axis="1 0 0" range="-90 90" damping="0.002" armature="1e-5"/>
+<geom type="mesh" mesh="p9" pos="-0.019115 0.005407 0.109542" mass="0.013400" rgba=".83 .33 .49 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p16" pos="-0.019115 0.005407 0.109542" mass="0.000035" rgba=".83 .33 .49 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p20" pos="-0.019115 0.005407 0.109542" mass="0.000308" rgba=".83 .33 .49 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p31" pos="-0.019115 0.005407 0.109542" mass="0.006296" rgba=".83 .33 .49 1" contype="0" conaffinity="0" friction="1 .005 .0001"/>
+<body name="R_foot" pos="-0.014500 -0.004561 -0.022067"><joint name="R_foot" axis="0 1 0" range="-90 90" damping="0.002" armature="1e-5"/>
+<geom type="mesh" mesh="p11" pos="-0.004615 0.009968 0.131609" mass="0.004537" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p13" pos="-0.004615 0.009968 0.131609" mass="0.004357" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p17" pos="-0.004615 0.009968 0.131609" mass="0.004871" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p18" pos="-0.004615 0.009968 0.131609" mass="0.000035" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p23" pos="-0.004615 0.009968 0.131609" mass="0.000035" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p27" pos="-0.004615 0.009968 0.131609" mass="0.000035" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+<geom type="mesh" mesh="p29" pos="-0.004615 0.009968 0.131609" mass="0.013400" rgba=".73 .46 .09 1" contype="1" conaffinity="1" friction="1 .005 .0001"/>
+</body>
+</body>
+</body>
+</body>
+</body>
+</body>
+</worldbody>
+<actuator><position name="L_yaw" joint="L_yaw" kp="1.0" kv="0.03" ctrlrange="-1.5708 1.5708" forcerange="-0.196 0.196"/><position name="L_thigh" joint="L_thigh" kp="1.0" kv="0.03" ctrlrange="-1.5708 1.5708" forcerange="-0.196 0.196"/><position name="L_shin" joint="L_shin" kp="1.0" kv="0.03" ctrlrange="-1.5708 1.5708" forcerange="-0.196 0.196"/><position name="L_ankle" joint="L_ankle" kp="1.0" kv="0.03" ctrlrange="-1.5708 1.5708" forcerange="-0.196 0.196"/><position name="L_foot" joint="L_foot" kp="1.0" kv="0.03" ctrlrange="-1.5708 1.5708" forcerange="-0.196 0.196"/><position name="R_yaw" joint="R_yaw" kp="1.0" kv="0.03" ctrlrange="-1.5708 1.5708" forcerange="-0.196 0.196"/><position name="R_thigh" joint="R_thigh" kp="1.0" kv="0.03" ctrlrange="-1.5708 1.5708" forcerange="-0.196 0.196"/><position name="R_shin" joint="R_shin" kp="1.0" kv="0.03" ctrlrange="-1.5708 1.5708" forcerange="-0.196 0.196"/><position name="R_ankle" joint="R_ankle" kp="1.0" kv="0.03" ctrlrange="-1.5708 1.5708" forcerange="-0.196 0.196"/><position name="R_foot" joint="R_foot" kp="1.0" kv="0.03" ctrlrange="-1.5708 1.5708" forcerange="-0.196 0.196"/></actuator></mujoco>
