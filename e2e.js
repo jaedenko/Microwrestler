@@ -1,16 +1,16 @@
 // Run: node e2e.js  -- headless Chromium with a fake navigator.serial; checks frames + no console errors
 const {chromium}=require('playwright'),a=require('assert');
 (async()=>{
-const b=await chromium.launch(),p=await b.newPage({viewport:{width:1280,height:900}}),errs=[];
+const b=await chromium.launch({args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist']}),p=await b.newPage({viewport:{width:1280,height:900}}),errs=[];
 p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>m.type()==='error'&&errs.push(m.text()));
 await p.addInitScript(()=>{window.__tx=[];const rs=new ReadableStream({start(){}});
  Object.defineProperty(navigator,'serial',{value:{requestPort:async()=>({open:async()=>{},readable:rs,writable:new WritableStream({write(c){__tx.push(new TextDecoder().decode(c))}}),close:async()=>{}})}})});
-await p.goto('file://'+__dirname+'/index.html');
+await p.goto('http://localhost:8123/index.html');await p.waitForSelector('body[data-gl=ok]',{timeout:20000});
 await p.click('#btnConn');await p.waitForSelector('#st.ok',{timeout:5000}).catch(async e=>{console.log(await p.textContent('#st'),await p.textContent('#mmsg'),errs);throw e});
 const last=()=>p.evaluate(()=>__tx.filter(t=>t.startsWith('P')).pop());
 await p.click('[data-m=horn]');await p.waitForTimeout(150);a.strictEqual(await last(),'P 1500 1500 1500 1500 1500\n');
 await p.click('[data-m=run]');await p.waitForTimeout(150);a.strictEqual(await last(),'P 1500 1500 1500 1500 1500\n');
-await p.fill('#dz','8');await p.dispatchEvent('#dz','input');await p.waitForTimeout(1500);
+await p.fill('#dz','8');await p.dispatchEvent('#dz','input');await p.waitForTimeout(1500);await p.screenshot({path:'sq3d.png'});for(const v of ['side','front','top'])await p.click('[data-v='+v+']'),await p.waitForTimeout(400),await p.screenshot({path:v+'.png'});await p.click('[data-v="3d"]');
 // hip -26.5deg*11=-292 -> 1208; knee +45.5*11=500 -> 2000; ankle -19*11 -> 1291
 a.strictEqual(await last(),'P 1500 1208 2001 1291 1500\n');
 await p.screenshot({path:'desk.png'});await p.click('#jt [data-j=knee] [data-a=cal]');await p.waitForTimeout(100);await p.screenshot({path:'cal.png'});await p.click('#jt [data-j=knee] [data-a=cal]');

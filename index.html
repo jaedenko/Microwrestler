@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
 <style>
 :root{
   --bg:#EDEFF3;--card:#fff;--ink:#14213D;--mut:#5B6784;--line:#D5DAE5;--field:#F5F6F9;
@@ -64,7 +65,15 @@ main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;
 .stagehead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
 .stagehead h2{font-size:18px}
 #pel{white-space:nowrap;font-family:var(--disp);font-weight:650;font-size:22px;color:var(--amber);font-variant-numeric:tabular-nums}
-#cv{display:block;width:100%}
+#cv{display:block;width:100%;height:clamp(340px,62vh,640px);border-radius:12px;background:var(--stageHi);touch-action:none;cursor:grab}
+#cv:active{cursor:grabbing}
+.views{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.views button{background:transparent;border-color:#34457F;color:var(--ivory);min-height:32px;padding:3px 12px;font-size:14px}
+.views button:hover{border-color:var(--stageMut)}
+.views button.on{background:var(--amber);border-color:var(--amber);color:#14213D;font-weight:600}
+.views label{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:14px;color:var(--stageMut)}
+.views input{accent-color:var(--amber)}
+#glmsg{color:var(--amber)!important}
 .stage .note{color:var(--stageMut)}
 
 /* modes */
@@ -139,8 +148,13 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
 <main>
   <section class="stage" aria-label="Simulation">
     <div class="stagehead"><h2>What the leg will do</h2><span id="pel" aria-live="off">Pelvis 0.0 mm</span></div>
-    <canvas id="cv" role="img" aria-label="Side, front and top views of the leg"></canvas>
-    <p class="note">Dashed outline is neutral, with every servo at 90°. The foot stays planted, so a squat lowers the pelvis. Kinematics only: no weight and no servo torque.</p>
+    <div class="views" role="group" aria-label="Camera">
+      <button data-v="3d" class="on">3D</button><button data-v="side">Side</button><button data-v="front">Front</button><button data-v="top">Top</button>
+      <label><input type="checkbox" id="ghost" checked> Neutral outline</label>
+    </div>
+    <canvas id="cv" role="img" aria-label="3D model of the robot legs. Drag to orbit, scroll to zoom."></canvas>
+    <p id="glmsg" class="note" hidden></p>
+    <p class="note">The real CAD parts, moved by the same angles the servos get. The amber outline is the left leg at neutral (every servo at 90°). The right leg mirrors the left. Drag to orbit, scroll to zoom. Kinematics only: no weight and no servo torque.</p>
   </section>
 
   <div class="col">
@@ -206,7 +220,7 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
   </div>
 </main>
 
-<script>
+<script type="module">
 // CORE-BEGIN
 const RAD=Math.PI/180;
 const G={ // CAD frame, mm, neutral pose (all joints 90 deg = straight)
@@ -374,41 +388,51 @@ $('#bImp').onchange=async e=>{try{const o=JSON.parse(await e.target.files[0].tex
   joints=o.joints;usDeg=+o.usDeg||11;maxDps=+o.maxDps||60;$('#usd').value=usDeg;$('#dps').value=maxDps;sv();setMode('rel');renderJoints();msg('Settings imported.')}catch(err){msg('Import failed: '+err.message,1)}e.target.value=''};
 $('#bRes').onclick=()=>{if(confirm('Reset all joints and settings to defaults?')){joints=DEF.map(j=>({...j}));usDeg=11;maxDps=60;$('#usd').value=11;$('#dps').value=60;sv();setMode('rel');renderJoints()}};
 
-// ---------- the ring: three views on one canvas, same scale ----------
-const INK='#0B1530',IVORY='#F7F3E8',AMBER='#FFB547',SAND='#D8B98A',STRAW='#A8782F',PANEL='#1C2B52',PELV='#4A5F9E',LAB='#A6B1D1';
-const PAN=[{n:'Side',h:1,v:2,b:[-70,60,-162,50]},{n:'Front',h:0,v:2,b:[-92,48,-162,50]},{n:'Top',h:0,v:1,b:[-95,50,-60,60],ring:1}];
-const GAP=10,TOTAL=PAN.reduce((s,p)=>s+p.b[1]-p.b[0],0)+GAP*(PAN.length-1),LABH=26;
-let CW=600,CH=300,DPR=1;
-function size(){const c=$('#cv');DPR=devicePixelRatio||1;CW=c.clientWidth||600;CH=Math.round(212*CW/TOTAL+LABH);c.style.height=CH+'px';c.width=Math.round(CW*DPR);c.height=Math.round(CH*DPR)}
-addEventListener('resize',size);
-function draw(){
-  const c=$('#cv'),x=c.getContext('2d'),s=(CW-0)/TOTAL;
-  x.setTransform(DPR,0,0,DPR,0,0);x.clearRect(0,0,CW,CH);x.lineJoin='round';x.lineCap='round';
-  const ghost=fk([0,0,0,0,0]);pose=fk(CORE.map(id=>cur[id]||0));
-  let off=0;
-  PAN.forEach(V=>{
-    const [h0,h1,v0,v1]=V.b,w=(h1-h0)*s,hh=(v1-v0)*s,top=CH-hh,P=p=>[off+(p[V.h]-h0)*s,CH-(p[V.v]-v0)*s];
-    x.save();x.beginPath();x.roundRect?x.roundRect(off,top,w,hh,10):x.rect(off,top,w,hh);x.clip();
-    x.fillStyle=PANEL;x.fillRect(off,top,w,hh);
-    if(V.v===2){const y=P([0,0,G.soleZ])[1];x.fillStyle=SAND;x.fillRect(off,y,w,CH-y);x.fillStyle=STRAW;x.fillRect(off,y-1,w,3)}
-    if(V.ring){const p=P([G.footC[0],G.footC[1],0]);x.fillStyle=SAND;x.beginPath();x.arc(p[0],p[1],48*s,0,7);x.fill();x.strokeStyle=STRAW;x.lineWidth=Math.max(3,4*s);x.stroke()}
-    const poly=(pts,close)=>{x.beginPath();pts.forEach((n,i)=>{const p=P(n);i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])});if(close)x.closePath()};
-    const rect=(F,fill,stroke)=>{const a=P(F.pelvis.lo),b=P(F.pelvis.hi);x.fillStyle=fill;x.strokeStyle=stroke;x.lineWidth=1.5;x.beginPath();x.rect(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1]));x.fill();x.stroke()};
-    if(!V.ring)rect(pose,PELV,'#6F83C4');
-    x.setLineDash([4,4]);x.strokeStyle='rgba(247,243,232,.45)';x.lineWidth=1.5;poly(ghost.nodes);x.stroke();poly(ghost.foot,1);x.stroke();x.setLineDash([]);
-    poly(pose.foot,1);x.fillStyle=V.ring?'rgba(20,33,61,.4)':'rgba(247,243,232,.2)';x.fill();
-    const lw=Math.max(3,5.5*s);
-    [[INK,lw+3],[IVORY,lw]].forEach(([col,wd])=>{x.strokeStyle=col;x.lineWidth=wd;poly(pose.nodes);x.stroke();poly(pose.foot,1);x.lineWidth=wd*.5;x.stroke()});
-    if(V.ring)rect(pose,'rgba(74,95,158,.45)','#6F83C4');
-    pose.nodes.slice(0,5).forEach(n=>{const p=P(n);x.fillStyle=AMBER;x.strokeStyle=INK;x.lineWidth=1.5;x.beginPath();x.arc(p[0],p[1],Math.max(2.5,2.6*s),0,7);x.fill();x.stroke()});
-    if(V.n==='Side'){x.font='600 12px '+getComputedStyle(document.body).fontFamily;x.textBaseline='middle';
-      ['hip','knee','ankle'].forEach((id,i)=>{const a=cur[id]||0;if(Math.abs(a)<.05)return;const p=P(pose.nodes[i+1]);const t=a.toFixed(0)+'°';
-        x.lineWidth=3;x.strokeStyle=INK;x.strokeText(t,p[0]+10,p[1]);x.fillStyle=AMBER;x.fillText(t,p[0]+10,p[1])})}
-    x.restore();
-    x.fillStyle=LAB;x.font='600 12px '+getComputedStyle(document.body).fontFamily;x.textBaseline='alphabetic';x.fillText(V.n,off+2,top-7);
-    off+=w+GAP*s;
-  });
+// ---------- 3D replica of the STEP model (assets/robot.*, from tools/export_model.py) ----------
+let gl=null;
+async function init3d(){
+  const T=await import('three'),{OrbitControls}=await import('./vendor/OrbitControls.js');
+  const [meta,buf]=await Promise.all([fetch('assets/robot.json').then(r=>r.json()),fetch('assets/robot.bin').then(r=>r.arrayBuffer())]);
+  const cv=$('#cv'),r=new T.WebGLRenderer({canvas:cv,antialias:true});
+  r.setPixelRatio(Math.min(devicePixelRatio||1,2));r.shadowMap.enabled=true;r.shadowMap.type=T.PCFSoftShadowMap;
+  const scene=new T.Scene(),cam=new T.PerspectiveCamera(32,1,10,3000);cam.up.set(0,0,1);
+  const TG=new T.Vector3(-18,0,-72),ctl=new OrbitControls(cam,cv);ctl.target.copy(TG);ctl.enableDamping=true;ctl.minDistance=120;ctl.maxDistance=900;
+  scene.add(new T.HemisphereLight(0xdfe6ff,0x6b5a3c,1.15));
+  const sun=new T.DirectionalLight(0xffffff,2.2);sun.position.set(-160,-220,260);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+  Object.assign(sun.shadow.camera,{left:-170,right:170,top:170,bottom:-170,near:50,far:700});sun.shadow.bias=-.0004;scene.add(sun);
+  const geos={};
+  meta.links.forEach(l=>{const p=new Int16Array(buf,l.p,l.nv*3),f=new Float32Array(p.length);for(let i=0;i<p.length;i++)f[i]=p[i]/100;
+    const g=new T.BufferGeometry();g.setAttribute('position',new T.BufferAttribute(f,3));g.setIndex(new T.BufferAttribute(new Uint16Array(buf,l.i,l.nt*3),1));
+    const n=g.toNonIndexed();n.computeVertexNormals();geos[l.id]={g:n,rgb:l.rgb}});
+  const world=new T.Group(),ghost=new T.Group(),mesh={};scene.add(world,ghost);
+  const gm=new T.MeshBasicMaterial({color:0xffb547,transparent:true,opacity:.2,depthWrite:false});
+  for(const id in geos){const {g,rgb}=geos[id],m=new T.Mesh(g,new T.MeshStandardMaterial({color:new T.Color(...rgb),roughness:.55,metalness:.05}));
+    m.castShadow=m.receiveShadow=true;m.matrixAutoUpdate=false;world.add(m);mesh[id]=m;
+    if(id[0]==='L'){const h=new T.Mesh(g,gm);h.renderOrder=2;ghost.add(h)}}
+  // dohyo: sand disc + straw ring, top at the sole plane
+  const floor=new T.Mesh(new T.CylinderGeometry(150,150,8,96).rotateX(Math.PI/2),new T.MeshStandardMaterial({color:0xD8B98A,roughness:.95}));
+  floor.position.set(-18,0,G.soleZ-4);floor.receiveShadow=true;scene.add(floor);
+  const ring=new T.Mesh(new T.TorusGeometry(150,4,12,128),new T.MeshStandardMaterial({color:0xA8782F,roughness:.8}));ring.position.set(-18,0,G.soleZ);scene.add(ring);
+  scene.background=new T.Color(0x1C2B52);
+  // forward kinematics: product of exponentials about the neutral-pose axes, same as fk() above
+  const AX=[[0,0,1],[1,0,0],[1,0,0],[1,0,0],[0,1,0]].map(a=>new T.Vector3(...a));
+  const oL=JNT.map(j=>j.o),oR=oL.map(o=>[-36.17-o[0],o[1],o[2]]); // right leg = mirror of the left about x = -18.085
+  const A=new T.Matrix4(),B=new T.Matrix4(),C=new T.Matrix4(),D=new T.Matrix4();
+  function chain(pre,org,ang){A.identity();for(let i=0;i<5;i++){const o=org[i];B.makeTranslation(o[0],o[1],o[2]);C.makeRotationAxis(AX[i],ang[i]*RAD);D.makeTranslation(-o[0],-o[1],-o[2]);A.multiply(B).multiply(C).multiply(D);mesh[pre+(i+1)].matrix.copy(A)}}
+  const views={'3d':[-.55,-.75,.38],side:[-1,0,.04],front:[0,-1,.04],top:[0,-.001,1]};
+  function view(k){const d=new T.Vector3(...views[k]).normalize().multiplyScalar(k==='3d'?520:k==='top'?400:470);ctl.target.copy(TG);cam.position.copy(TG).add(d);ctl.update();gl.dirty=true;
+    document.querySelectorAll('.views [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===k))}
+  function size(){const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();gl.dirty=true}
+  gl={dirty:true,
+    update(){const a=CORE.map(id=>cur[id]||0),sig=a.join()+pose.shift;if(sig===gl.sig)return;gl.sig=sig;chain('L',oL,a);chain('R',oR,[-a[0],a[1],a[2],a[3],-a[4]]);world.position.z=pose.shift;gl.dirty=true}};
+  ctl.addEventListener('change',()=>gl.dirty=true);
+  document.querySelectorAll('.views [data-v]').forEach(b=>b.onclick=()=>view(b.dataset.v));
+  $('#ghost').onchange=e=>{ghost.visible=e.target.checked;gl.dirty=true};
+  new ResizeObserver(size).observe(cv);
+  (function frame(){requestAnimationFrame(frame);ctl.update();if(gl.dirty){gl.dirty=false;r.render(scene,cam)}})();
+  gl.update();view('3d');size();document.body.dataset.gl='ok';
 }
+init3d().catch(e=>{const m=$('#glmsg');m.hidden=false;m.textContent='The 3D view could not start ('+e.message+'). Controls still work.';$('#cv').style.display='none';document.querySelector('.views').hidden=true});
 
 // ---------- loop ----------
 let last=performance.now(),lastPel='';
@@ -417,7 +441,7 @@ setInterval(()=>{
   if(routine&&routine.fn(now/1000-routine.t0)===false)routine=null;
   joints.forEach(j=>cur[j.id]=slew(cur[j.id]||0,tgt[j.id]||0,dt,maxDps));
   const f=frame();if(f!==lastF||now-lastSend>250){send(f);lastF=f;lastSend=now}
-  draw();
+  pose=fk(CORE.map(id=>cur[id]||0));if(gl)gl.update();
   const pt='Pelvis '+(pose.shift<-.05?'−'+(-pose.shift).toFixed(1):'0.0')+' mm';if(pt!==lastPel){$('#pel').textContent=pt;lastPel=pt}
   document.querySelectorAll('.jr').forEach(r=>{const j=J(r.dataset.j),a=cur[j.id]||0;
     r.querySelector('.ja').innerHTML='<b>'+a.toFixed(1)+'°</b> · '+toUs(j,a,usDeg)+' µs';
@@ -426,7 +450,7 @@ setInterval(()=>{
 },20);
 
 if(!('serial' in navigator)){$('#noserial').hidden=false;$('#btnConn').disabled=true}
-renderJoints();size();setMode('rel');
+renderJoints();setMode('rel');
 </script>
 </body>
 </html>
