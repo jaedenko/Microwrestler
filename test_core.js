@@ -14,4 +14,7 @@ near(C.slew(0,100,.02,60),1.2);
 const n=C.fk([0,0,0,0,0]);near(n.shift,0,1e-9);
 const s=C.fk([0,...C.legIK(8),0]);near(s.shift,-8,.05);                 // pelvis drops 8 mm
 const z=s.foot.map(p=>p[2]);near(Math.max(...z)-Math.min(...z),0,.05);   // foot flat on floor
+a.strictEqual(C.DEF.length,10);a.strictEqual(new Set(C.DEF.map(j=>j.ch)).size,10);
+a.deepStrictEqual(C.DEF.slice(5).map(j=>[j.side,j.ch]),[0,1,2,3,4].map(i=>['R',5+i]));
+a.ok(C.DEF.slice(5).every((j,i)=>j.id==='r_'+C.DEF[i].id&&j.lo===C.DEF[i].lo));
 console.log('CORE PASS');

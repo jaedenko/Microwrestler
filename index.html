@@ -120,6 +120,9 @@ input[type=range].ts{background:linear-gradient(var(--ink),var(--ink)) center/2p
 .nudge button{min-width:48px;padding:5px 8px}
 .pulse{margin-left:auto;font-variant-numeric:tabular-nums}
 #clash:empty{display:none}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px;overflow-x:auto}
+.tabs button{border:0;border-bottom:3px solid transparent;border-radius:8px 8px 0 0;background:transparent;padding:6px 14px;white-space:nowrap}
+.tabs button[aria-selected=true]{border-bottom-color:var(--pri);font-weight:600;color:var(--pri)}
 
 details{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
 details:first-of-type{border-top:0;padding-top:0;margin-top:0}
@@ -149,12 +152,12 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
   <section class="stage" aria-label="Simulation">
     <div class="stagehead"><h2>What the leg will do</h2><span id="pel" aria-live="off">Pelvis 0.0 mm</span></div>
     <div class="views" role="group" aria-label="Camera">
-      <button data-v="3d" class="on">3D</button><button data-v="side">Side</button><button data-v="front">Front</button><button data-v="top">Top</button>
+      <button data-v="3d" class="on">3D</button><button data-v="side">Side</button><button data-v="front">Front</button><button data-v="top">Top</button><button id="vReset" title="Camera back to the default 3D view">Reset view</button>
       <label><input type="checkbox" id="ghost" checked> Neutral outline</label>
     </div>
     <canvas id="cv" role="img" aria-label="3D model of the robot legs. Drag to orbit, scroll to zoom."></canvas>
     <p id="glmsg" class="note" hidden></p>
-    <p class="note">The real CAD parts, moved by the same angles the servos get. The amber outline is the left leg at neutral (every servo at 90°). The right leg mirrors the left. Drag to orbit, scroll to zoom. Kinematics only: no weight and no servo torque.</p>
+    <p class="note">The real CAD parts, moved by the angles the servos get. The amber outline is the left leg at neutral (every servo at 90°). Squat and Sweep move both legs; the sliders move each joint on its own. Drag to orbit, scroll to zoom. Kinematics only: no weight and no servo torque.</p>
   </section>
 
   <div class="col">
@@ -173,7 +176,7 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
       <div class="big"><output id="dzv" for="dz">0.0</output><span>mm lower</span></div>
       <input id="dz" type="range" min="0" max="15" step="0.5" value="0" aria-label="Squat depth in millimetres">
       <div class="row mt">
-        <button id="bStand">Stand</button>
+        <button id="bStand" title="All joints to 0°">Reset pose</button>
         <button id="bLoop">Squat loop</button>
         <label>Depth <input id="amp" type="number" min="1" max="15" step="0.5" value="5"> mm</label>
         <button id="bSweep">Sweep joints</button>
@@ -183,17 +186,20 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
 
     <section class="card" aria-labelledby="hJoints">
       <h2 id="hJoints">Joints</h2>
-      <div id="jt"></div>
+      <div class="tabs" role="tablist" aria-label="Joint groups">
+        <button role="tab" data-t="L">Left leg</button><button role="tab" data-t="R">Right leg</button><button role="tab" data-t="X">Arms and extras</button>
+      </div>
+      <div id="jt" role="tabpanel"></div>
       <p class="note warn" id="clash"></p>
-      <div class="row mt"><button id="bAdd">Add arm joint</button></div>
-      <p class="note">Each slider moves one joint. The shaded part is the range its servo can reach. If the real joint moves the opposite way to the picture, open Calibrate and flip its direction.</p>
+      <div class="row mt"><button id="bResetTab" class="btn-quiet"></button><button id="bAdd">Add arm joint</button></div>
+      <p class="note">Each leg is calibrated on its own tab. Each slider moves one joint. The shaded part is the range its servo can reach. If the real joint moves the opposite way to the picture, open Calibrate and flip its direction.</p>
     </section>
 
     <section class="card">
       <details open>
         <summary>Setup steps</summary>
         <ol class="steps">
-          <li>Flash <code>firmware/bridge/bridge.ino</code> to the Nano with the PCA9685 on A4 and A5. Plug the leg servos into channels 0 to 4.</li>
+          <li>Flash <code>firmware/bridge/bridge.ino</code> to the Nano with the PCA9685 on A4 and A5. Plug the left leg servos into channels 0 to 4 and the right leg into 5 to 9 (hip yaw, hip pitch, knee, ankle pitch, ankle roll).</li>
           <li>Connect, then choose Horn mode. Every servo holds 90°. Fit the horns with each joint straight.</li>
           <li>Calibrate each joint: set the centre, then the two mechanical stops.</li>
           <li>Choose Run and try Squat and Sweep. Compare the real leg with the picture and flip any joint that disagrees.</li>
@@ -229,12 +235,13 @@ const G={ // CAD frame, mm, neutral pose (all joints 90 deg = straight)
   footC:[-46.4,5.7], footR:27.75, soleZ:-145.5, footTopZ:-143.8,
   pelvis:{lo:[-81.6,-31,6.4],hi:[45.4,21.2,41.2]}};
 const CORE=['yaw','hip','knee','ankle','roll'];
-const DEF=[
+const DEF0=[
   {id:'yaw',name:'Hip yaw',ch:0,sign:1,trim:0,lo:1060,hi:1940},
   {id:'hip',name:'Hip pitch',ch:1,sign:1,trim:0,lo:730,hi:2270},
   {id:'knee',name:'Knee',ch:2,sign:1,trim:0,lo:1500,hi:2270},
   {id:'ankle',name:'Ankle pitch',ch:3,sign:1,trim:0,lo:730,hi:2270},
-  {id:'roll',name:'Ankle roll',ch:4,sign:1,trim:0,lo:1060,hi:1940}];
+  {id:'roll',name:'Ankle roll',ch:4,sign:1,trim:0,lo:1060,hi:1940}].map(j=>({...j,side:'L'}));
+const DEF=[...DEF0,...DEF0.map((j,i)=>({...j,id:'r_'+j.id,ch:5+i,side:'R'}))]; // right leg on channels 5-9; angles use the left leg's convention, the sim mirrors yaw and roll
 const wrap=a=>{while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.PI;return a};
 function legIK(dz){ // degrees [hip,knee,ankle], foot kept flat; null if out of reach (neutral leg is straight, dz<0 impossible)
   const v1y=G.knee[1]-G.hip[1],v1z=G.knee[2]-G.hip[2],v2y=G.ankle[1]-G.knee[1],v2z=G.ankle[2]-G.knee[2];
@@ -267,24 +274,28 @@ function fk(ang){ // ang = degrees [yaw,hip,knee,ankle,roll]; foot planted on th
 
 const $=s=>document.querySelector(s);
 const ld=k=>{try{return JSON.parse(localStorage.getItem('wb.'+k))}catch(e){return null}};
-let joints=ld('joints')||DEF.map(j=>({...j})),usDeg=ld('usDeg')||11,maxDps=ld('maxDps')||60;
+const norm=l=>{const o=l.map(j=>({side:j.extra?'X':'L',...j}));DEF.forEach(d=>{if(!o.some(j=>j.id===d.id))o.push({...d})});return o}; // old saves: add side + right leg
+let joints=norm(ld('joints')||[]),usDeg=ld('usDeg')||11,maxDps=ld('maxDps')||60;
 const sv=()=>{try{localStorage.setItem('wb.joints',JSON.stringify(joints));localStorage.setItem('wb.usDeg',usDeg);localStorage.setItem('wb.maxDps',maxDps)}catch(e){}};
 const cur={},tgt={};
-let mode='rel',calJ=null,calUs=1500,routine=null,pose=fk([0,0,0,0,0]);
+let mode='rel',calJ=null,calUs=1500,routine=null,pose={shift:0};
 const J=id=>joints.find(j=>j.id===id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const msg=(t,warn)=>{const e=$('#mmsg');e.textContent=t;e.className='note'+(warn?' warn':'');return false};
 const setDz=v=>{$('#dz').value=v;$('#dzv').textContent=(+v).toFixed(1)};
 
 // ---------- motion ----------
+const LEG={L:CORE,R:CORE.map(id=>'r_'+id)},SIDE={L:'Left',R:'Right'};
+const legAng=side=>LEG[side].map(id=>cur[id]||0);
 function applySquat(dz){
   const q=legIK(dz);
   if(!q)return msg('Unreachable: the leg is straight at neutral, so it can only shorten.',1);
-  const js=['hip','knee','ankle'].map(J);
-  const bad=js.map((j,i)=>{const [l,h]=angLim(j,usDeg);return q[i]<l-1e-6||q[i]>h+1e-6?j.name+' '+q[i].toFixed(1)+'°':null}).filter(Boolean);
+  const bad=[],set=[];
+  for(const side of 'LR')['hip','knee','ankle'].forEach((n,i)=>{const id=side==='L'?n:'r_'+n,j=J(id),[l,h]=angLim(j,usDeg);
+    if(q[i]<l-1e-6||q[i]>h+1e-6)bad.push(SIDE[side].toLowerCase()+' '+n+' '+q[i].toFixed(1)+'°');set.push([id,q[i]])});
   if(bad.length)return msg('Outside servo limits: '+bad.join(', ')+'. Squat less or widen the stops.',1);
-  js.forEach((j,i)=>tgt[j.id]=q[i]);
-  msg('Hip '+q[0].toFixed(1)+'°, knee '+q[1].toFixed(1)+'°, ankle '+q[2].toFixed(1)+'°');
+  set.forEach(([id,v])=>tgt[id]=v);
+  msg('Both legs: hip '+q[0].toFixed(1)+'°, knee '+q[1].toFixed(1)+'°, ankle '+q[2].toFixed(1)+'°');
   return true;
 }
 function stand(){joints.forEach(j=>tgt[j.id]=0);setDz(0)}
@@ -295,10 +306,10 @@ $('#bStand').onclick=()=>{stopRoutine();stand();msg('')};
 $('#bLoop').onclick=()=>{ if(routine&&routine.name==='loop'){stopRoutine();return}
   run('loop',t=>{const dz=(+$('#amp').value)*(1-Math.cos(2*Math.PI*t/4))/2;setDz(dz);if(!applySquat(dz)){stopRoutine();return false}})};
 $('#bSweep').onclick=()=>{stopRoutine();stand();run('sweep',t=>{const k=Math.floor(t/4);if(k>=CORE.length){stand();stopRoutine();return false}
-  CORE.forEach((id,i)=>tgt[id]=i===k?clampA(J(id),15*Math.sin(2*Math.PI*(t%4)/4),usDeg):0)});msg('Sweeping each joint ±15°, 4 s each.')};
+  for(const side of 'LR')LEG[side].forEach((id,i)=>tgt[id]=i===k?clampA(J(id),15*Math.sin(2*Math.PI*(t%4)/4),usDeg):0)});msg('Sweeping each joint of both legs ±15°, 4 s each.')};
 
 // ---------- serial ----------
-const enc=new TextEncoder();let port=null,writer=null,reader=null,ready=false,txBusy=false,lastF='',lastSend=0;
+const RELEASE='P '+new Array(16).fill(0).join(' ')+'\n',enc=new TextEncoder();let port=null,writer=null,reader=null,ready=false,txBusy=false,lastF='',lastSend=0;
 const logEl=$('#log');const log=(t,k)=>{logEl.textContent=(logEl.textContent+k+' '+t.trim()+'\n').split('\n').slice(-40).join('\n');logEl.scrollTop=1e9};
 const setSt=(t,ok)=>{$('#st').textContent=t;$('#st').className='pill'+(ok?' ok':'')};
 async function readLoop(p){try{reader=p.readable.getReader();const d=new TextDecoder();for(;;){const {value,done}=await reader.read();if(done)break;log(d.decode(value),'<')}}catch(e){}}
@@ -310,13 +321,13 @@ async function connect(){
   catch(e){port=null;writer=null;ready=false;setSt('Not connected');if(e.name!=='NotFoundError')msg('Connect failed: '+e.message,1)}
 }
 async function disconnect(){
-  ready=false;try{await writer.write(enc.encode('P 0 0 0 0 0\n'));writer.releaseLock();await reader.cancel();await port.close()}catch(e){}
+  ready=false;try{await writer.write(enc.encode(RELEASE));writer.releaseLock();await reader.cancel();await port.close()}catch(e){}
   port=writer=reader=null;setSt('Not connected');$('#btnConn').textContent='Connect Nano';$('#btnConn').classList.add('btn-pri');lastF='';
 }
 $('#btnConn').onclick=()=>port?disconnect():connect();
 function send(f){if(!ready||txBusy)return;txBusy=true;log(f,'>');writer.write(enc.encode(f)).catch(()=>{}).finally(()=>txBusy=false)}
 function frame(){ // position in the frame = channel; 0 = released
-  const n=Math.max(5,...joints.map(j=>j.ch+1)),f=new Array(n).fill(0);
+  const f=new Array(16).fill(0); // always all 16 channels, so a channel nobody uses any more is released
   if(mode==='horn')joints.forEach(j=>f[j.ch]=1500);
   else if(mode==='cal'&&calJ)f[calJ.ch]=calUs;
   else if(mode==='run')joints.forEach(j=>f[j.ch]=toUs(j,cur[j.id]||0,usDeg));
@@ -335,9 +346,13 @@ function setMode(m){
   $('#modeNote').textContent=m==='cal'?'Calibrating '+calJ.name+': only that servo is driven.':NOTE[m];
 }
 document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
-$('#btnStop').onclick=()=>{stopRoutine();setMode('rel');send('P 0 0 0 0 0\n')};
+$('#btnStop').onclick=()=>{stopRoutine();setMode('rel');send(RELEASE)};
 
-// ---------- joints ----------
+// ---------- joints (one tab per leg) ----------
+let tab='L';
+const TABS={L:['Left leg','left leg'],R:['Right leg','right leg'],X:['Arms and extras','extras']};
+const defOf=j=>DEF.find(d=>d.id===j.id)||{ch:j.ch,sign:1,trim:0,lo:730,hi:2270};
+function resetJ(j){const d=defOf(j);Object.assign(j,{ch:d.ch,sign:d.sign,trim:d.trim,lo:d.lo,hi:d.hi});tgt[j.id]=clampA(j,tgt[j.id]||0,usDeg);sv()}
 function clash(){const seen={},d=[];joints.forEach(j=>{if(seen[j.ch]!==undefined)d.push(j.ch);seen[j.ch]=1});$('#clash').textContent=d.length?'Channel '+[...new Set(d)].join(', ')+' is used by two joints.':''}
 function paint(row,j){const [l,h]=angLim(j,usDeg),a=(Math.max(-90,l)+90)/1.8,b=(Math.min(90,h)+90)/1.8;
   row.querySelector('.ts').style.setProperty('--g','linear-gradient(to right,var(--off) '+a+'%,var(--on) '+a+'%,var(--on) '+b+'%,var(--off) '+b+'%)')}
@@ -345,19 +360,23 @@ function sync(row,j){row.querySelectorAll('input[data-k]').forEach(i=>{if(docume
   row.querySelector('.ch').textContent='ch '+j.ch;row.querySelector('[data-a=sign]').textContent='Direction '+(j.sign>0?'+':'−');paint(row,j)}
 function renderJoints(){
   const box=$('#jt');box.innerHTML='';
-  joints.forEach(j=>{
-    cur[j.id]??=0;tgt[j.id]??=0;
-    const row=document.createElement('div');row.className='jr';row.dataset.j=j.id;
+  document.querySelectorAll('.tabs [data-t]').forEach(b=>{const on=b.dataset.t===tab;b.setAttribute('aria-selected',on);b.tabIndex=on?0:-1});
+  $('#bResetTab').textContent='Reset '+TABS[tab][1]+' calibration';$('#bAdd').hidden=tab!=='X';
+  joints.forEach(j=>{cur[j.id]??=0;tgt[j.id]??=0});
+  const list=joints.filter(j=>(j.side||'X')===tab);
+  if(!list.length)box.innerHTML='<p class="note">No extra joints yet. Add one for each arm servo.</p>';
+  list.forEach(j=>{
+    const row=document.createElement('div'),who=(j.side==='L'?'Left ':j.side==='R'?'Right ':'')+j.name;row.className='jr';row.dataset.j=j.id;
     row.innerHTML='<div class="jh"><span class="jn">'+(j.extra?'<input data-k="name" value="'+esc(j.name)+'" aria-label="Joint name">':esc(j.name))+'</span>'
       +'<span class="chip ch"></span><span class="ja"></span><button data-a="cal" aria-expanded="false">Calibrate</button></div>'
-      +'<input class="ts" type="range" min="-90" max="90" step="1" aria-label="'+esc(j.name)+' angle">'
+      +'<input class="ts" type="range" min="-90" max="90" step="1" aria-label="'+esc(who)+' angle">'
       +'<div class="cp" hidden><div class="cg">'
       +'<label>Channel<input data-k="ch" type="number" min="0" max="15"></label>'
       +'<label>Centre µs<input data-k="trim" type="number"></label>'
       +'<label>Low stop µs<input data-k="lo" type="number"></label>'
       +'<label>High stop µs<input data-k="hi" type="number"></label></div>'
       +'<div class="row mt nudge"><button data-n="-10">−10</button><button data-n="-1">−1</button><button data-n="1">+1</button><button data-n="10">+10</button><span class="pulse">Pulse <b class="cus">1500</b> µs</span></div>'
-      +'<div class="row mt"><button data-a="sc">Set centre</button><button data-a="sl">Set low stop</button><button data-a="sh">Set high stop</button><button data-a="sign"></button>'+(j.extra?'<button data-a="del">Remove joint</button>':'')+'</div>'
+      +'<div class="row mt"><button data-a="sc">Set centre</button><button data-a="sl">Set low stop</button><button data-a="sh">Set high stop</button><button data-a="sign"></button><button data-a="rj">Reset joint</button>'+(j.extra?'<button data-a="del">Remove joint</button>':'')+'</div>'
       +'<p class="note">Only this servo is driven. Centre is the joint straight. Stops are the two mechanical ends, backed off a little. A knee or elbow only bends one way.</p></div>';
     const ts=row.querySelector('.ts');
     row.querySelectorAll('input[data-k]').forEach(i=>i.onchange=()=>{const k=i.dataset.k;j[k]=k==='name'?i.value:+i.value;tgt[j.id]=clampA(j,tgt[j.id],usDeg);sv();clash();sync(row,j)});
@@ -370,13 +389,17 @@ function renderJoints(){
     row.querySelector('[data-a=sc]').onclick=()=>{j.trim=calUs-1500;sv();sync(row,j)};
     row.querySelector('[data-a=sl]').onclick=()=>{j.lo=calUs;sv();sync(row,j)};
     row.querySelector('[data-a=sh]').onclick=()=>{j.hi=calUs;sv();sync(row,j)};
+    row.querySelector('[data-a=rj]').onclick=()=>{resetJ(j);calUs=1500+j.trim;clash();sync(row,j)};
     const del=row.querySelector('[data-a=del]');if(del)del.onclick=()=>{joints=joints.filter(x=>x!==j);sv();if(calJ===j)setMode('rel');renderJoints()};
     sync(row,j);box.appendChild(row);
   });
   clash();
 }
+document.querySelectorAll('.tabs [data-t]').forEach(b=>b.onclick=()=>{if(mode==='cal')setMode('rel');tab=b.dataset.t;renderJoints()});
+$('#bResetTab').onclick=()=>{if(!confirm('Reset the '+TABS[tab][1]+' calibration (channels, directions, centres and stops) to defaults?'))return;
+  if(mode==='cal')setMode('rel');joints.filter(j=>(j.side||'X')===tab).forEach(resetJ);renderJoints()};
 $('#bAdd').onclick=()=>{const used=new Set(joints.map(j=>j.ch));let ch=0;while(used.has(ch))ch++;
-  const n=joints.filter(j=>j.extra).length+1;joints.push({id:'x'+Date.now(),name:'Arm joint '+n,ch:Math.min(ch,15),sign:1,trim:0,lo:730,hi:2270,extra:true});sv();renderJoints()};
+  const n=joints.filter(j=>j.extra).length+1;joints.push({id:'x'+Date.now(),name:'Arm joint '+n,ch:Math.min(ch,15),sign:1,trim:0,lo:730,hi:2270,extra:true,side:'X'});sv();renderJoints()};
 
 // ---------- settings ----------
 $('#usd').value=usDeg;$('#dps').value=maxDps;
@@ -385,7 +408,7 @@ $('#dps').onchange=e=>{maxDps=+e.target.value||60;sv()};
 $('#bExp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({joints,usDeg,maxDps},null,1)],{type:'application/json'}));a.download='microwrestler-settings.json';a.click()};
 $('#bImp').onchange=async e=>{try{const o=JSON.parse(await e.target.files[0].text());
   if(!Array.isArray(o.joints)||!o.joints.every(j=>j.id&&Number.isInteger(j.ch)&&[j.trim,j.lo,j.hi].every(Number.isFinite)))throw Error('not a settings file');
-  joints=o.joints;usDeg=+o.usDeg||11;maxDps=+o.maxDps||60;$('#usd').value=usDeg;$('#dps').value=maxDps;sv();setMode('rel');renderJoints();msg('Settings imported.')}catch(err){msg('Import failed: '+err.message,1)}e.target.value=''};
+  joints=norm(o.joints);usDeg=+o.usDeg||11;maxDps=+o.maxDps||60;$('#usd').value=usDeg;$('#dps').value=maxDps;sv();setMode('rel');renderJoints();msg('Settings imported.')}catch(err){msg('Import failed: '+err.message,1)}e.target.value=''};
 $('#bRes').onclick=()=>{if(confirm('Reset all joints and settings to defaults?')){joints=DEF.map(j=>({...j}));usDeg=11;maxDps=60;$('#usd').value=11;$('#dps').value=60;sv();setMode('rel');renderJoints()}};
 
 // ---------- 3D replica of the STEP model (assets/robot.*, from tools/export_model.py) ----------
@@ -424,9 +447,10 @@ async function init3d(){
     document.querySelectorAll('.views [data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v===k))}
   function size(){const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;r.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();gl.dirty=true}
   gl={dirty:true,
-    update(){const a=CORE.map(id=>cur[id]||0),sig=a.join()+pose.shift;if(sig===gl.sig)return;gl.sig=sig;chain('L',oL,a);chain('R',oR,[-a[0],a[1],a[2],a[3],-a[4]]);world.position.z=pose.shift;gl.dirty=true}};
+    update(){const a=legAng('L'),c=legAng('R'),sig=a.join()+'|'+c.join()+'|'+pose.shift;if(sig===gl.sig)return;gl.sig=sig;chain('L',oL,a);chain('R',oR,[-c[0],c[1],c[2],c[3],-c[4]]);world.position.z=pose.shift;gl.dirty=true}};
   ctl.addEventListener('change',()=>gl.dirty=true);
   document.querySelectorAll('.views [data-v]').forEach(b=>b.onclick=()=>view(b.dataset.v));
+  $('#vReset').onclick=()=>{$('#ghost').checked=true;ghost.visible=true;view('3d')};
   $('#ghost').onchange=e=>{ghost.visible=e.target.checked;gl.dirty=true};
   new ResizeObserver(size).observe(cv);
   (function frame(){requestAnimationFrame(frame);ctl.update();if(gl.dirty){gl.dirty=false;r.render(scene,cam)}})();
@@ -441,7 +465,8 @@ setInterval(()=>{
   if(routine&&routine.fn(now/1000-routine.t0)===false)routine=null;
   joints.forEach(j=>cur[j.id]=slew(cur[j.id]||0,tgt[j.id]||0,dt,maxDps));
   const f=frame();if(f!==lastF||now-lastSend>250){send(f);lastF=f;lastSend=now}
-  pose=fk(CORE.map(id=>cur[id]||0));if(gl)gl.update();
+  {const pl=fk(legAng('L')),pr=fk(legAng('R'));pose={shift:Math.max(pl.shift,pr.shift)}} // pelvis rests on the longer leg
+  if(gl)gl.update();
   const pt='Pelvis '+(pose.shift<-.05?'−'+(-pose.shift).toFixed(1):'0.0')+' mm';if(pt!==lastPel){$('#pel').textContent=pt;lastPel=pt}
   document.querySelectorAll('.jr').forEach(r=>{const j=J(r.dataset.j),a=cur[j.id]||0;
     r.querySelector('.ja').innerHTML='<b>'+a.toFixed(1)+'°</b> · '+toUs(j,a,usDeg)+' µs';
