@@ -3,146 +3,205 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wrestler leg bench</title>
+<title>Microwrestler bench</title>
+<meta name="description" content="Drive and simulate a micro wrestling robot leg over Web Serial.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f6f5f1;--card:#fff;--ink:#1d1d1b;--mut:#6b6a64;--line:#dcdad2;--acc:#0f6e56;--accbg:#e1f5ee;--warn:#a32d2d;--warnbg:#fcebeb;--floor:#b4b2a9;--pelvis:#d3d1c7;--leg:#534ab7;--ghost:#b4b2a9;--btn:#f1efe8}
-@media (prefers-color-scheme:dark){:root{--bg:#161614;--card:#21201e;--ink:#eceae2;--mut:#a09e94;--line:#3a3935;--acc:#5dcaa5;--accbg:#04342c;--warn:#f09595;--warnbg:#501313;--floor:#5f5e5a;--pelvis:#3a3935;--leg:#afa9ec;--ghost:#5f5e5a;--btn:#2c2b28}}
+:root{
+  --bg:#EDEFF3;--card:#fff;--ink:#14213D;--mut:#5B6784;--line:#D5DAE5;--field:#F5F6F9;
+  --pri:#2B3A8C;--priInk:#fff;--prib:#E6E9F7;--ok:#1F8A70;--okb:#DDF3EC;--bad:#B3261E;--badInk:#fff;--badb:#FBE7E5;
+  --on:#BFC9F0;--off:#E4E7EE;
+  --stage:#14213D;--stageHi:#1C2B52;--sand:#D8B98A;--straw:#A8782F;--ivory:#F7F3E8;--amber:#FFB547;--stageMut:#A6B1D1;
+  --disp:"Bricolage Grotesque","Instrument Sans",system-ui,sans-serif;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0C1224;--card:#151D38;--ink:#E8ECF8;--mut:#9AA5C4;--line:#27335A;--field:#0F1630;
+  --pri:#8FA2FF;--priInk:#0C1224;--prib:#1F2A55;--ok:#5FD3B2;--okb:#123C33;--bad:#FF8A80;--badInk:#2A0A08;--badb:#401A18;
+  --on:#3B4D8F;--off:#232C4D;--stage:#0F1832;--stageHi:#18244A}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
-h1{font-size:20px;font-weight:600;margin:0}
-h2{font-size:15px;font-weight:600;margin:0 0 10px}
-.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-main{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;padding:16px;max-width:1320px;margin:0 auto}
-@media (max-width:900px){main{grid-template-columns:1fr}}
-.col{display:flex;flex-direction:column;gap:16px;min-width:0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
-.sticky{position:sticky;top:12px;align-self:start}
-@media (max-width:900px){.sticky{position:static}}
-button{font:inherit;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.01em}
+h2{font-size:17px;font-weight:650}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 13px;min-height:36px;transition:background .12s,border-color .12s}
 button:hover{border-color:var(--mut)}
-button.on{background:var(--accbg);border-color:var(--acc);color:var(--acc);font-weight:600}
-button.danger{border-color:var(--warn);color:var(--warn)}
-button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
-input{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 6px;min-width:0}
-input[type=number]{width:72px}
-input[type=range]{width:100%;padding:0;accent-color:var(--acc)}
-.chip{font-size:13px;padding:3px 10px;border-radius:99px;background:var(--btn);border:1px solid var(--line)}
-.chip.ok{background:var(--accbg);color:var(--acc);border-color:var(--acc)}
-.note{font-size:13px;color:var(--mut);margin:8px 0 0}
-.warn{color:var(--warn)}
-.banner{margin:12px 16px 0;padding:8px 12px;border-radius:8px;background:var(--warnbg);color:var(--warn);font-size:14px}
-.views{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
-figure{margin:0;flex:var(--w) 1 90px;min-width:0}
-figcaption{font-size:12px;color:var(--mut);margin-top:2px}
-canvas{width:100%;display:block;background:var(--bg);border-radius:8px}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th{font-weight:500;color:var(--mut);text-align:left;padding:2px 4px}
-td{padding:3px 4px;vertical-align:middle}
-.readout{margin-top:10px;overflow-x:auto}
-.readout td:nth-child(n+2),.readout th:nth-child(n+2){text-align:right;font-variant-numeric:tabular-nums}
-.seg{display:flex;gap:6px;flex-wrap:wrap}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
-.cal{margin-top:12px;padding:10px;border:1px solid var(--acc);border-radius:8px;background:var(--accbg)}
-.cal b{color:var(--acc)}
-.tbl{overflow-x:auto}
-td input[type=number]{width:64px}
-td input[data-k=name]{width:92px}
-details{margin-top:10px;font-size:13px;color:var(--mut)}
-pre{max-height:140px;overflow:auto;background:var(--bg);padding:8px;border-radius:6px;font-size:12px;margin:6px 0 0}
-ol{margin:6px 0 0;padding-left:20px;font-size:13px;color:var(--mut)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+button:disabled{opacity:.5;cursor:not-allowed}
+input[type=number],input[data-k=name]{background:var(--field);border:1px solid var(--line);border-radius:8px;padding:6px 8px;width:100%;min-width:0;font-variant-numeric:tabular-nums}
+.btn-pri{background:var(--pri);border-color:var(--pri);color:var(--priInk);font-weight:600}
+.btn-pri:hover{border-color:var(--pri);filter:brightness(1.08)}
+.btn-bad{background:var(--bad);border-color:var(--bad);color:var(--badInk);font-weight:600}
+.btn-bad:hover{border-color:var(--bad);filter:brightness(1.08)}
+.btn-quiet{background:transparent}
+
+header{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;justify-content:space-between;padding:16px 24px;max-width:1360px;margin:0 auto}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-size:26px;font-weight:750}
+.brand span{color:var(--mut)}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:14px}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--mut)}
+.pill.ok{background:var(--okb);border-color:var(--ok);color:var(--ok);font-weight:600}
+.pill.ok::before{background:var(--ok)}
+.banner{max-width:1312px;margin:0 auto 4px;padding:9px 14px;border-radius:10px;background:var(--badb);color:var(--bad);font-size:14px}
+@media (min-width:1360px){.banner{margin-left:auto;margin-right:auto}}
+
+main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;padding:8px 24px 40px;max-width:1360px;margin:0 auto;align-items:start}
+@media (max-width:980px){main{grid-template-columns:1fr;padding:8px 16px 32px}header{padding:14px 16px}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;min-width:0}
+.card>h2{margin-bottom:12px}
+.note{font-size:13.5px;color:var(--mut);margin:10px 0 0;max-width:62ch}
+.warn{color:var(--bad)}
+
+/* stage: the ring */
+.stage{position:sticky;top:16px;background:var(--stage);border:1px solid var(--stageHi);border-radius:20px;padding:18px 18px 16px;color:var(--ivory)}
+@media (max-width:980px){.stage{position:static}}
+.stagehead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+.stagehead h2{font-size:18px}
+#pel{white-space:nowrap;font-family:var(--disp);font-weight:650;font-size:22px;color:var(--amber);font-variant-numeric:tabular-nums}
+#cv{display:block;width:100%}
+.stage .note{color:var(--stageMut)}
+
+/* modes */
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:520px){.modes{grid-template-columns:1fr}}
+.modes button{text-align:left;padding:10px 12px;border-radius:12px;display:flex;flex-direction:column;gap:2px;min-height:62px}
+.modes b{font-family:var(--disp);font-size:16px;font-weight:650}
+.modes small{color:var(--mut);font-size:12.5px;line-height:1.3}
+.modes button.on{background:var(--pri);border-color:var(--pri);color:var(--priInk)}
+.modes button.on small{color:inherit;opacity:.85}
+.modes button.cal{border-style:dashed}
+
+/* squat */
+.big{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.big output{font-family:var(--disp);font-size:40px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.big span{color:var(--mut)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:99px;background:var(--off);margin:10px 0;padding:0}
+input[type=range]::-webkit-slider-runnable-track{background:transparent;height:12px}
+input[type=range]::-moz-range-track{background:transparent;height:12px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--pri);border:3px solid var(--card);box-shadow:0 0 0 1px var(--pri);margin-top:-6px}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--pri);border:3px solid var(--card);box-shadow:0 0 0 1px var(--pri)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row.mt{margin-top:12px}
+.row label{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:14px}
+.row label input{width:68px}
+
+/* joints */
+.jr{border:1px solid var(--line);border-radius:12px;padding:10px 12px 4px;background:var(--card)}
+.jr+.jr{margin-top:8px}
+.jr.open{border-color:var(--pri);background:var(--prib)}
+.jh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.jn{font-weight:600;flex:1 1 110px;min-width:0}
+.jn input{padding:3px 6px}
+.chip{font-size:12.5px;padding:1px 8px;border-radius:99px;background:var(--field);border:1px solid var(--line);color:var(--mut)}
+.ja{font-variant-numeric:tabular-nums;font-size:14px;min-width:130px;text-align:right;color:var(--mut)}
+.ja b{color:var(--ink);font-weight:600}
+.jh button{min-height:30px;padding:3px 10px;font-size:14px}
+input[type=range].ts{background:linear-gradient(var(--ink),var(--ink)) center/2px 100% no-repeat,var(--g,var(--off))}
+.cp{padding:6px 0 10px}
+.cp[hidden]{display:none}
+.cg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:520px){.cg{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cg label{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--mut)}
+.nudge button{min-width:48px;padding:5px 8px}
+.pulse{margin-left:auto;font-variant-numeric:tabular-nums}
+#clash:empty{display:none}
+
+details{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+details:first-of-type{border-top:0;padding-top:0;margin-top:0}
+summary{cursor:pointer;font-family:var(--disp);font-weight:650;font-size:16px;padding:2px 0}
+details[open]>summary{margin-bottom:10px}
+ol.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px;max-width:62ch}
+ol.steps li::marker{font-family:var(--disp);font-weight:700;color:var(--pri)}
+code{font-size:13px;background:var(--field);padding:1px 5px;border-radius:5px}
+pre{max-height:160px;overflow:auto;background:var(--field);padding:10px;border-radius:8px;font-size:12px;margin:0}
+label.file{display:inline-flex;align-items:center;min-height:36px;padding:7px 13px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:var(--card)}
+label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Wrestler leg bench</h1>
+  <div class="brand"><h1>Microwrestler bench</h1><span>Leg test and simulation</span></div>
   <div class="bar">
-    <span id="st" class="chip">Not connected</span>
-    <button id="btnConn">Connect</button>
-    <button id="btnStop" class="danger">Release all</button>
+    <span id="st" class="pill">Not connected</span>
+    <button id="btnConn" class="btn-pri">Connect Nano</button>
+    <button id="btnStop" class="btn-bad">Release all</button>
   </div>
 </header>
-<div id="noserial" class="banner" hidden>This browser has no Web Serial, so the page is simulation only. Open it in Chrome or Edge to drive the Nano.</div>
+<div id="noserial" class="banner" hidden>This browser has no Web Serial, so the page works as a simulator only. Open it in Chrome or Edge to drive the Nano.</div>
 
 <main>
-  <section class="card sticky">
-    <h2>What to expect</h2>
-    <div class="views">
-      <figure style="--w:130"><canvas id="cs"></canvas><figcaption>Side, +Y to the right</figcaption></figure>
-      <figure style="--w:140"><canvas id="cf"></canvas><figcaption>Front, +X to the right</figcaption></figure>
-      <figure style="--w:140"><canvas id="ct"></canvas><figcaption>Top, +X right, +Y up</figcaption></figure>
-    </div>
-    <p class="note">Solid = the leg now. Grey outline = neutral. The foot stays planted, so a squat lowers the pelvis. Kinematics only: no weight or servo torque.</p>
-    <div id="ro" class="readout"></div>
+  <section class="stage" aria-label="Simulation">
+    <div class="stagehead"><h2>What the leg will do</h2><span id="pel" aria-live="off">Pelvis 0.0 mm</span></div>
+    <canvas id="cv" role="img" aria-label="Side, front and top views of the leg"></canvas>
+    <p class="note">Dashed outline is neutral, with every servo at 90°. The foot stays planted, so a squat lowers the pelvis. Kinematics only: no weight and no servo torque.</p>
   </section>
 
   <div class="col">
-    <section class="card">
-      <h2>Hardware</h2>
-      <div class="seg" id="modes">
-        <button data-m="rel">Released</button>
-        <button data-m="horn">Horn mode (all 90°)</button>
-        <button data-m="run">Run</button>
+    <section class="card" aria-labelledby="hMode">
+      <h2 id="hMode">Servos</h2>
+      <div class="modes" id="modes">
+        <button data-m="rel"><b>Released</b><small>No signal. Simulation only.</small></button>
+        <button data-m="horn"><b>Horn mode</b><small>Every servo holds 90°.</small></button>
+        <button data-m="run"><b>Run</b><small>Servos follow the picture.</small></button>
       </div>
       <p class="note" id="modeNote"></p>
     </section>
 
-    <section class="card">
-      <h2>Motion</h2>
-      <label>Squat: pelvis lowers <b id="dzv">0.0</b> mm
-        <input id="dz" type="range" min="0" max="15" step="0.5" value="0"></label>
-      <div class="row">
+    <section class="card" aria-labelledby="hMove">
+      <h2 id="hMove">Squat</h2>
+      <div class="big"><output id="dzv" for="dz">0.0</output><span>mm lower</span></div>
+      <input id="dz" type="range" min="0" max="15" step="0.5" value="0" aria-label="Squat depth in millimetres">
+      <div class="row mt">
         <button id="bStand">Stand</button>
         <button id="bLoop">Squat loop</button>
-        <label>depth <input id="amp" type="number" min="1" max="15" step="0.5" value="5"> mm</label>
+        <label>Depth <input id="amp" type="number" min="1" max="15" step="0.5" value="5"> mm</label>
         <button id="bSweep">Sweep joints</button>
       </div>
       <p class="note" id="mmsg"></p>
     </section>
 
-    <section class="card">
-      <h2>Joints</h2>
-      <div class="tbl">
-      <table>
-        <thead><tr><th>Joint</th><th>Ch</th><th>Sign</th><th>Trim µs</th><th>Low µs</th><th>High µs</th><th>Test angle</th><th></th></tr></thead>
-        <tbody id="jt"></tbody>
-      </table>
-      </div>
+    <section class="card" aria-labelledby="hJoints">
+      <h2 id="hJoints">Joints</h2>
+      <div id="jt"></div>
       <p class="note warn" id="clash"></p>
-      <div id="cal" class="cal" hidden>
-        <div><b id="calName"></b> pulse <b id="calUs"></b> µs. Only this servo is driven.</div>
+      <div class="row mt"><button id="bAdd">Add arm joint</button></div>
+      <p class="note">Each slider moves one joint. The shaded part is the range its servo can reach. If the real joint moves the opposite way to the picture, open Calibrate and flip its direction.</p>
+    </section>
+
+    <section class="card">
+      <details open>
+        <summary>Setup steps</summary>
+        <ol class="steps">
+          <li>Flash <code>firmware/bridge/bridge.ino</code> to the Nano with the PCA9685 on A4 and A5. Plug the leg servos into channels 0 to 4.</li>
+          <li>Connect, then choose Horn mode. Every servo holds 90°. Fit the horns with each joint straight.</li>
+          <li>Calibrate each joint: set the centre, then the two mechanical stops.</li>
+          <li>Choose Run and try Squat and Sweep. Compare the real leg with the picture and flip any joint that disagrees.</li>
+        </ol>
+      </details>
+      <details>
+        <summary>Settings</summary>
         <div class="row">
-          <button data-n="-10">−10</button><button data-n="-1">−1</button><button data-n="1">+1</button><button data-n="10">+10</button>
-          <button id="cC">Set centre</button><button id="cL">Set low stop</button><button id="cH">Set high stop</button><button id="cD">Done</button>
+          <label>µs per degree <input id="usd" type="number" min="5" max="20" step="0.1"></label>
+          <label>Speed limit °/s <input id="dps" type="number" min="5" max="300" step="5"></label>
         </div>
-        <p class="note">Centre = joint straight. Stops = the two mechanical ends, backed off a little. A knee or elbow only has one side.</p>
-      </div>
-      <div class="row"><button id="bAdd">Add joint (arm)</button></div>
-      <p class="note">If the real joint moves the opposite way to the picture, flip its sign. Settings are saved in this browser.</p>
-    </section>
-
-    <section class="card">
-      <h2>Settings</h2>
-      <div class="row">
-        <label>µs per degree <input id="usd" type="number" min="5" max="20" step="0.1"></label>
-        <label>speed limit °/s <input id="dps" type="number" min="5" max="300" step="5"></label>
-      </div>
-      <div class="row">
-        <button id="bExp">Export</button>
-        <label class="chip" style="cursor:pointer">Import<input id="bImp" type="file" accept="application/json" hidden></label>
-        <button id="bRes">Reset to defaults</button>
-      </div>
-      <details><summary>Serial log</summary><pre id="log"></pre></details>
-    </section>
-
-    <section class="card">
-      <h2>Setup steps</h2>
-      <ol>
-        <li>Flash <code>firmware/bridge/bridge.ino</code> to the Nano (PCA9685 on A4/A5). Servos on channels 0 to 4.</li>
-        <li>Connect, then Horn mode: every servo holds 90°. Fit the horns with each joint straight.</li>
-        <li>Calibrate each joint: set the centre, then the two stops.</li>
-        <li>Run, then try Squat and Sweep. Compare the real leg with the picture and flip signs that disagree.</li>
-      </ol>
+        <div class="row mt">
+          <button id="bExp">Export settings</button>
+          <label class="file">Import settings<input id="bImp" type="file" accept="application/json" hidden></label>
+          <button id="bRes" class="btn-quiet">Reset to defaults</button>
+        </div>
+        <p class="note">Settings are saved in this browser.</p>
+      </details>
+      <details>
+        <summary>Serial log</summary>
+        <pre id="log" aria-live="off"></pre>
+      </details>
     </section>
   </div>
 </main>
@@ -201,43 +260,44 @@ let mode='rel',calJ=null,calUs=1500,routine=null,pose=fk([0,0,0,0,0]);
 const J=id=>joints.find(j=>j.id===id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const msg=(t,warn)=>{const e=$('#mmsg');e.textContent=t;e.className='note'+(warn?' warn':'');return false};
+const setDz=v=>{$('#dz').value=v;$('#dzv').textContent=(+v).toFixed(1)};
 
 // ---------- motion ----------
 function applySquat(dz){
   const q=legIK(dz);
-  if(!q)return msg('Unreachable: the leg is straight at neutral, it can only shorten.',1);
+  if(!q)return msg('Unreachable: the leg is straight at neutral, so it can only shorten.',1);
   const js=['hip','knee','ankle'].map(J);
   const bad=js.map((j,i)=>{const [l,h]=angLim(j,usDeg);return q[i]<l-1e-6||q[i]>h+1e-6?j.name+' '+q[i].toFixed(1)+'°':null}).filter(Boolean);
   if(bad.length)return msg('Outside servo limits: '+bad.join(', ')+'. Squat less or widen the stops.',1);
   js.forEach((j,i)=>tgt[j.id]=q[i]);
-  msg('IK: hip '+q[0].toFixed(1)+'°, knee '+q[1].toFixed(1)+'°, ankle '+q[2].toFixed(1)+'°');
+  msg('Hip '+q[0].toFixed(1)+'°, knee '+q[1].toFixed(1)+'°, ankle '+q[2].toFixed(1)+'°');
   return true;
 }
-function stand(){joints.forEach(j=>tgt[j.id]=0);$('#dz').value=0;$('#dzv').textContent='0.0'}
-const run=(name,fn)=>{routine={name,t0:performance.now()/1000,fn};$('#bLoop').classList.toggle('on',name==='loop')};
-function stopRoutine(){routine=null;$('#bLoop').classList.remove('on')}
-$('#dz').oninput=e=>{stopRoutine();const v=+e.target.value;$('#dzv').textContent=v.toFixed(1);applySquat(v)};
+function stand(){joints.forEach(j=>tgt[j.id]=0);setDz(0)}
+const run=(name,fn)=>{routine={name,t0:performance.now()/1000,fn};$('#bLoop').classList.toggle('btn-pri',name==='loop')};
+function stopRoutine(){routine=null;$('#bLoop').classList.remove('btn-pri')}
+$('#dz').oninput=e=>{stopRoutine();setDz(+e.target.value);applySquat(+e.target.value)};
 $('#bStand').onclick=()=>{stopRoutine();stand();msg('')};
 $('#bLoop').onclick=()=>{ if(routine&&routine.name==='loop'){stopRoutine();return}
-  run('loop',t=>{const dz=(+$('#amp').value)*(1-Math.cos(2*Math.PI*t/4))/2;$('#dz').value=dz;$('#dzv').textContent=dz.toFixed(1);if(!applySquat(dz)){stopRoutine();return false}})};
+  run('loop',t=>{const dz=(+$('#amp').value)*(1-Math.cos(2*Math.PI*t/4))/2;setDz(dz);if(!applySquat(dz)){stopRoutine();return false}})};
 $('#bSweep').onclick=()=>{stopRoutine();stand();run('sweep',t=>{const k=Math.floor(t/4);if(k>=CORE.length){stand();stopRoutine();return false}
   CORE.forEach((id,i)=>tgt[id]=i===k?clampA(J(id),15*Math.sin(2*Math.PI*(t%4)/4),usDeg):0)});msg('Sweeping each joint ±15°, 4 s each.')};
 
 // ---------- serial ----------
 const enc=new TextEncoder();let port=null,writer=null,reader=null,ready=false,txBusy=false,lastF='',lastSend=0;
 const logEl=$('#log');const log=(t,k)=>{logEl.textContent=(logEl.textContent+k+' '+t.trim()+'\n').split('\n').slice(-40).join('\n');logEl.scrollTop=1e9};
-const setSt=(t,ok)=>{$('#st').textContent=t;$('#st').className='chip'+(ok?' ok':'')};
+const setSt=(t,ok)=>{$('#st').textContent=t;$('#st').className='pill'+(ok?' ok':'')};
 async function readLoop(p){try{reader=p.readable.getReader();const d=new TextDecoder();for(;;){const {value,done}=await reader.read();if(done)break;log(d.decode(value),'<')}}catch(e){}}
 async function connect(){
   try{port=await navigator.serial.requestPort();await port.open({baudRate:115200});
     writer=port.writable.getWriter();readLoop(port);setSt('Nano booting…');
     await new Promise(r=>setTimeout(r,2000)); // opening the port resets a Nano
-    ready=true;setSt('Connected',1);$('#btnConn').textContent='Disconnect'}
+    ready=true;setSt('Connected',1);$('#btnConn').textContent='Disconnect';$('#btnConn').classList.remove('btn-pri')}
   catch(e){port=null;writer=null;ready=false;setSt('Not connected');if(e.name!=='NotFoundError')msg('Connect failed: '+e.message,1)}
 }
 async function disconnect(){
   ready=false;try{await writer.write(enc.encode('P 0 0 0 0 0\n'));writer.releaseLock();await reader.cancel();await port.close()}catch(e){}
-  port=writer=reader=null;setSt('Not connected');$('#btnConn').textContent='Connect';lastF='';
+  port=writer=reader=null;setSt('Not connected');$('#btnConn').textContent='Connect Nano';$('#btnConn').classList.add('btn-pri');lastF='';
 }
 $('#btnConn').onclick=()=>port?disconnect():connect();
 function send(f){if(!ready||txBusy)return;txBusy=true;log(f,'>');writer.write(enc.encode(f)).catch(()=>{}).finally(()=>txBusy=false)}
@@ -250,99 +310,119 @@ function frame(){ // position in the frame = channel; 0 = released
 }
 
 // ---------- modes ----------
-const NOTE={rel:'Servos released: no signal. The picture is a pure simulation.',
+const NOTE={rel:'Servos are released. The picture is a pure simulation.',
   horn:'Every servo holds 90° (1500 µs). Fit the horns with each joint straight: legs straight, arms hanging down.',
-  run:'Servos follow the picture. Sliders and motions move the real leg.',cal:''};
+  run:'Servos move to neutral now, then follow the picture. Sliders and motions move the real leg.',cal:''};
+function closePanels(){document.querySelectorAll('.jr.open').forEach(r=>{r.classList.remove('open');r.querySelector('.cp').hidden=true;r.querySelector('[data-a=cal]').setAttribute('aria-expanded','false')})}
 function setMode(m){
-  mode=m;if(m!=='cal'){calJ=null;$('#cal').hidden=true}
-  if(m==='horn'||m==='run'){stopRoutine();joints.forEach(j=>cur[j.id]=tgt[j.id]=0);$('#dz').value=0;$('#dzv').textContent='0.0'} // start from neutral, never jump
-  document.querySelectorAll('#modes button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  $('#modeNote').textContent=m==='cal'?'Calibrating '+calJ.name+': only that servo is driven.':NOTE[m]+(m==='run'?' Servos move to neutral now.':'');
+  mode=m;if(m!=='cal'){calJ=null;closePanels()}
+  if(m==='horn'||m==='run'){stopRoutine();joints.forEach(j=>cur[j.id]=tgt[j.id]=0);setDz(0)} // start from neutral, never jump
+  document.querySelectorAll('#modes button').forEach(b=>{b.classList.toggle('on',b.dataset.m===m);b.setAttribute('aria-pressed',b.dataset.m===m)});
+  $('#modeNote').textContent=m==='cal'?'Calibrating '+calJ.name+': only that servo is driven.':NOTE[m];
 }
 document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
 $('#btnStop').onclick=()=>{stopRoutine();setMode('rel');send('P 0 0 0 0 0\n')};
 
-// ---------- joints table + calibration ----------
+// ---------- joints ----------
 function clash(){const seen={},d=[];joints.forEach(j=>{if(seen[j.ch]!==undefined)d.push(j.ch);seen[j.ch]=1});$('#clash').textContent=d.length?'Channel '+[...new Set(d)].join(', ')+' is used by two joints.':''}
+function paint(row,j){const [l,h]=angLim(j,usDeg),a=(Math.max(-90,l)+90)/1.8,b=(Math.min(90,h)+90)/1.8;
+  row.querySelector('.ts').style.setProperty('--g','linear-gradient(to right,var(--off) '+a+'%,var(--on) '+a+'%,var(--on) '+b+'%,var(--off) '+b+'%)')}
+function sync(row,j){row.querySelectorAll('input[data-k]').forEach(i=>{if(document.activeElement!==i)i.value=j[i.dataset.k]});
+  row.querySelector('.ch').textContent='ch '+j.ch;row.querySelector('[data-a=sign]').textContent='Direction '+(j.sign>0?'+':'−');paint(row,j)}
 function renderJoints(){
-  const tb=$('#jt');tb.innerHTML='';
+  const box=$('#jt');box.innerHTML='';
   joints.forEach(j=>{
     cur[j.id]??=0;tgt[j.id]??=0;
-    const tr=document.createElement('tr');
-    tr.innerHTML='<td>'+(j.extra?'<input data-k="name" value="'+esc(j.name)+'">':esc(j.name))+'</td>'
-      +'<td><input data-k="ch" type="number" min="0" max="15" value="'+j.ch+'"></td>'
-      +'<td><button data-a="sign" title="Flip direction">'+(j.sign>0?'+':'−')+'</button></td>'
-      +['trim','lo','hi'].map(k=>'<td><input data-k="'+k+'" type="number" value="'+j[k]+'"></td>').join('')
-      +'<td style="min-width:110px"><input class="ts" type="range" min="-90" max="90" step="1" value="'+Math.round(tgt[j.id])+'"> <span class="tv">'+Math.round(tgt[j.id])+'°</span></td>'
-      +'<td><button data-a="cal">Calibrate</button>'+(j.extra?' <button data-a="del" title="Remove">×</button>':'')+'</td>';
-    tr.querySelectorAll('input[data-k]').forEach(i=>i.onchange=()=>{const k=i.dataset.k;j[k]=k==='name'?i.value:+i.value;tgt[j.id]=clampA(j,tgt[j.id],usDeg);sv();clash()});
-    const ts=tr.querySelector('.ts'),tv=tr.querySelector('.tv');
-    ts.oninput=()=>{stopRoutine();tgt[j.id]=clampA(j,+ts.value,usDeg);ts.value=Math.round(tgt[j.id]);tv.textContent=ts.value+'°'};
-    tr.querySelector('[data-a=sign]').onclick=()=>{j.sign*=-1;tgt[j.id]=clampA(j,tgt[j.id],usDeg);sv();renderJoints()};
-    tr.querySelector('[data-a=cal]').onclick=()=>{calJ=j;calUs=1500+j.trim;mode='cal';setMode('cal')};
-    const del=tr.querySelector('[data-a=del]');if(del)del.onclick=()=>{joints=joints.filter(x=>x!==j);sv();renderJoints()};
-    tb.appendChild(tr);
+    const row=document.createElement('div');row.className='jr';row.dataset.j=j.id;
+    row.innerHTML='<div class="jh"><span class="jn">'+(j.extra?'<input data-k="name" value="'+esc(j.name)+'" aria-label="Joint name">':esc(j.name))+'</span>'
+      +'<span class="chip ch"></span><span class="ja"></span><button data-a="cal" aria-expanded="false">Calibrate</button></div>'
+      +'<input class="ts" type="range" min="-90" max="90" step="1" aria-label="'+esc(j.name)+' angle">'
+      +'<div class="cp" hidden><div class="cg">'
+      +'<label>Channel<input data-k="ch" type="number" min="0" max="15"></label>'
+      +'<label>Centre µs<input data-k="trim" type="number"></label>'
+      +'<label>Low stop µs<input data-k="lo" type="number"></label>'
+      +'<label>High stop µs<input data-k="hi" type="number"></label></div>'
+      +'<div class="row mt nudge"><button data-n="-10">−10</button><button data-n="-1">−1</button><button data-n="1">+1</button><button data-n="10">+10</button><span class="pulse">Pulse <b class="cus">1500</b> µs</span></div>'
+      +'<div class="row mt"><button data-a="sc">Set centre</button><button data-a="sl">Set low stop</button><button data-a="sh">Set high stop</button><button data-a="sign"></button>'+(j.extra?'<button data-a="del">Remove joint</button>':'')+'</div>'
+      +'<p class="note">Only this servo is driven. Centre is the joint straight. Stops are the two mechanical ends, backed off a little. A knee or elbow only bends one way.</p></div>';
+    const ts=row.querySelector('.ts');
+    row.querySelectorAll('input[data-k]').forEach(i=>i.onchange=()=>{const k=i.dataset.k;j[k]=k==='name'?i.value:+i.value;tgt[j.id]=clampA(j,tgt[j.id],usDeg);sv();clash();sync(row,j)});
+    ts.oninput=()=>{stopRoutine();tgt[j.id]=clampA(j,+ts.value,usDeg);ts.value=Math.round(tgt[j.id])};
+    row.querySelector('[data-a=sign]').onclick=()=>{j.sign*=-1;tgt[j.id]=clampA(j,tgt[j.id],usDeg);sv();sync(row,j)};
+    row.querySelector('[data-a=cal]').onclick=()=>{ if(row.classList.contains('open')){setMode('rel');return}
+      closePanels();row.classList.add('open');row.querySelector('.cp').hidden=false;row.querySelector('[data-a=cal]').setAttribute('aria-expanded','true');
+      calJ=j;calUs=1500+j.trim;setMode('cal')};
+    row.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{calUs=Math.min(2500,Math.max(500,calUs+ +b.dataset.n))});
+    row.querySelector('[data-a=sc]').onclick=()=>{j.trim=calUs-1500;sv();sync(row,j)};
+    row.querySelector('[data-a=sl]').onclick=()=>{j.lo=calUs;sv();sync(row,j)};
+    row.querySelector('[data-a=sh]').onclick=()=>{j.hi=calUs;sv();sync(row,j)};
+    const del=row.querySelector('[data-a=del]');if(del)del.onclick=()=>{joints=joints.filter(x=>x!==j);sv();if(calJ===j)setMode('rel');renderJoints()};
+    sync(row,j);box.appendChild(row);
   });
   clash();
 }
-function calShow(){if(!calJ)return;$('#cal').hidden=false;$('#calName').textContent=calJ.name;$('#calUs').textContent=calUs}
-document.querySelectorAll('#cal [data-n]').forEach(b=>b.onclick=()=>{calUs=Math.min(2500,Math.max(500,calUs+ +b.dataset.n))});
-$('#cC').onclick=()=>{calJ.trim=calUs-1500;sv();renderJoints()};
-$('#cL').onclick=()=>{calJ.lo=calUs;sv();renderJoints()};
-$('#cH').onclick=()=>{calJ.hi=calUs;sv();renderJoints()};
-$('#cD').onclick=()=>setMode('rel');
 $('#bAdd').onclick=()=>{const used=new Set(joints.map(j=>j.ch));let ch=0;while(used.has(ch))ch++;
   const n=joints.filter(j=>j.extra).length+1;joints.push({id:'x'+Date.now(),name:'Arm joint '+n,ch:Math.min(ch,15),sign:1,trim:0,lo:730,hi:2270,extra:true});sv();renderJoints()};
 
 // ---------- settings ----------
 $('#usd').value=usDeg;$('#dps').value=maxDps;
-$('#usd').onchange=e=>{usDeg=+e.target.value||11;sv()};$('#dps').onchange=e=>{maxDps=+e.target.value||60;sv()};
-$('#bExp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({joints,usDeg,maxDps},null,1)],{type:'application/json'}));a.download='wrestler-bench.json';a.click()};
+$('#usd').onchange=e=>{usDeg=+e.target.value||11;sv();document.querySelectorAll('.jr').forEach(r=>paint(r,J(r.dataset.j)))};
+$('#dps').onchange=e=>{maxDps=+e.target.value||60;sv()};
+$('#bExp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({joints,usDeg,maxDps},null,1)],{type:'application/json'}));a.download='microwrestler-settings.json';a.click()};
 $('#bImp').onchange=async e=>{try{const o=JSON.parse(await e.target.files[0].text());
-  if(!Array.isArray(o.joints)||!o.joints.every(j=>j.id&&Number.isInteger(j.ch)&&[j.trim,j.lo,j.hi].every(Number.isFinite)))throw Error('not a bench file');
-  joints=o.joints;usDeg=+o.usDeg||11;maxDps=+o.maxDps||60;$('#usd').value=usDeg;$('#dps').value=maxDps;sv();renderJoints();msg('Imported.')}catch(err){msg('Import failed: '+err.message,1)}e.target.value=''};
-$('#bRes').onclick=()=>{if(confirm('Reset all joints and settings to defaults?')){joints=DEF.map(j=>({...j}));usDeg=11;maxDps=60;$('#usd').value=11;$('#dps').value=60;sv();renderJoints()}};
+  if(!Array.isArray(o.joints)||!o.joints.every(j=>j.id&&Number.isInteger(j.ch)&&[j.trim,j.lo,j.hi].every(Number.isFinite)))throw Error('not a settings file');
+  joints=o.joints;usDeg=+o.usDeg||11;maxDps=+o.maxDps||60;$('#usd').value=usDeg;$('#dps').value=maxDps;sv();setMode('rel');renderJoints();msg('Settings imported.')}catch(err){msg('Import failed: '+err.message,1)}e.target.value=''};
+$('#bRes').onclick=()=>{if(confirm('Reset all joints and settings to defaults?')){joints=DEF.map(j=>({...j}));usDeg=11;maxDps=60;$('#usd').value=11;$('#dps').value=60;sv();setMode('rel');renderJoints()}};
 
-// ---------- drawing ----------
-const VIEWS=[{id:'cs',h:1,v:2,b:[-70,60,-152,50]},{id:'cf',h:0,v:2,b:[-92,48,-152,50]},{id:'ct',h:0,v:1,b:[-92,48,-48,48]}];
-VIEWS.forEach(V=>$('#'+V.id).style.aspectRatio=(V.b[1]-V.b[0])+'/'+(V.b[3]-V.b[2]));
-function size(){const r=devicePixelRatio||1;VIEWS.forEach(V=>{const c=$('#'+V.id),w=c.clientWidth;c.width=Math.round(w*r);c.height=Math.round(w*r*(V.b[3]-V.b[2])/(V.b[1]-V.b[0]))})}
+// ---------- the ring: three views on one canvas, same scale ----------
+const INK='#0B1530',IVORY='#F7F3E8',AMBER='#FFB547',SAND='#D8B98A',STRAW='#A8782F',PANEL='#1C2B52',PELV='#4A5F9E',LAB='#A6B1D1';
+const PAN=[{n:'Side',h:1,v:2,b:[-70,60,-162,50]},{n:'Front',h:0,v:2,b:[-92,48,-162,50]},{n:'Top',h:0,v:1,b:[-95,50,-60,60],ring:1}];
+const GAP=10,TOTAL=PAN.reduce((s,p)=>s+p.b[1]-p.b[0],0)+GAP*(PAN.length-1),LABH=26;
+let CW=600,CH=300,DPR=1;
+function size(){const c=$('#cv');DPR=devicePixelRatio||1;CW=c.clientWidth||600;CH=Math.round(212*CW/TOTAL+LABH);c.style.height=CH+'px';c.width=Math.round(CW*DPR);c.height=Math.round(CH*DPR)}
 addEventListener('resize',size);
 function draw(){
-  const css=getComputedStyle(document.documentElement),C=n=>css.getPropertyValue(n).trim();
+  const c=$('#cv'),x=c.getContext('2d'),s=(CW-0)/TOTAL;
+  x.setTransform(DPR,0,0,DPR,0,0);x.clearRect(0,0,CW,CH);x.lineJoin='round';x.lineCap='round';
   const ghost=fk([0,0,0,0,0]);pose=fk(CORE.map(id=>cur[id]||0));
-  VIEWS.forEach(V=>{
-    const c=$('#'+V.id),x=c.getContext('2d'),W=c.width,H=c.height,[h0,h1,v0,v1]=V.b,s=Math.min(W/(h1-h0),H/(v1-v0));
-    const ox=(W-s*(h1-h0))/2,oy=(H-s*(v1-v0))/2,P=p=>[ox+(p[V.h]-h0)*s,H-oy-(p[V.v]-v0)*s];
-    x.clearRect(0,0,W,H);x.lineJoin='round';x.lineCap='round';
-    if(V.v===2){x.strokeStyle=C('--floor');x.lineWidth=1.5;x.beginPath();x.moveTo(0,P([0,0,G.soleZ])[1]);x.lineTo(W,P([0,0,G.soleZ])[1]);x.stroke()}
-    const pelv=(F,fill)=>{const a=P(F.pelvis.lo),b=P(F.pelvis.hi);x.fillStyle=fill;x.fillRect(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1]))};
-    const chain=(F,col,w,dash)=>{x.setLineDash(dash||[]);x.strokeStyle=col;x.lineWidth=w;x.beginPath();F.nodes.forEach((n,i)=>{const p=P(n);i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])});x.stroke();
-      x.beginPath();F.foot.forEach((n,i)=>{const p=P(n);i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])});x.closePath();x.stroke();x.setLineDash([])};
-    pelv(pose,C('--pelvis'));
-    chain(ghost,C('--ghost'),1.5,[4,4]);
-    x.fillStyle=C('--accbg');x.beginPath();pose.foot.forEach((n,i)=>{const p=P(n);i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])});x.fill();
-    chain(pose,C('--leg'),Math.max(2,7*s));
-    x.fillStyle=C('--card');pose.nodes.slice(0,5).forEach(n=>{const p=P(n);x.beginPath();x.arc(p[0],p[1],Math.max(1.5,2*s),0,7);x.fill()});
+  let off=0;
+  PAN.forEach(V=>{
+    const [h0,h1,v0,v1]=V.b,w=(h1-h0)*s,hh=(v1-v0)*s,top=CH-hh,P=p=>[off+(p[V.h]-h0)*s,CH-(p[V.v]-v0)*s];
+    x.save();x.beginPath();x.roundRect?x.roundRect(off,top,w,hh,10):x.rect(off,top,w,hh);x.clip();
+    x.fillStyle=PANEL;x.fillRect(off,top,w,hh);
+    if(V.v===2){const y=P([0,0,G.soleZ])[1];x.fillStyle=SAND;x.fillRect(off,y,w,CH-y);x.fillStyle=STRAW;x.fillRect(off,y-1,w,3)}
+    if(V.ring){const p=P([G.footC[0],G.footC[1],0]);x.fillStyle=SAND;x.beginPath();x.arc(p[0],p[1],48*s,0,7);x.fill();x.strokeStyle=STRAW;x.lineWidth=Math.max(3,4*s);x.stroke()}
+    const poly=(pts,close)=>{x.beginPath();pts.forEach((n,i)=>{const p=P(n);i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1])});if(close)x.closePath()};
+    const rect=(F,fill,stroke)=>{const a=P(F.pelvis.lo),b=P(F.pelvis.hi);x.fillStyle=fill;x.strokeStyle=stroke;x.lineWidth=1.5;x.beginPath();x.rect(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1]));x.fill();x.stroke()};
+    if(!V.ring)rect(pose,PELV,'#6F83C4');
+    x.setLineDash([4,4]);x.strokeStyle='rgba(247,243,232,.45)';x.lineWidth=1.5;poly(ghost.nodes);x.stroke();poly(ghost.foot,1);x.stroke();x.setLineDash([]);
+    poly(pose.foot,1);x.fillStyle=V.ring?'rgba(20,33,61,.4)':'rgba(247,243,232,.2)';x.fill();
+    const lw=Math.max(3,5.5*s);
+    [[INK,lw+3],[IVORY,lw]].forEach(([col,wd])=>{x.strokeStyle=col;x.lineWidth=wd;poly(pose.nodes);x.stroke();poly(pose.foot,1);x.lineWidth=wd*.5;x.stroke()});
+    if(V.ring)rect(pose,'rgba(74,95,158,.45)','#6F83C4');
+    pose.nodes.slice(0,5).forEach(n=>{const p=P(n);x.fillStyle=AMBER;x.strokeStyle=INK;x.lineWidth=1.5;x.beginPath();x.arc(p[0],p[1],Math.max(2.5,2.6*s),0,7);x.fill();x.stroke()});
+    if(V.n==='Side'){x.font='600 12px '+getComputedStyle(document.body).fontFamily;x.textBaseline='middle';
+      ['hip','knee','ankle'].forEach((id,i)=>{const a=cur[id]||0;if(Math.abs(a)<.05)return;const p=P(pose.nodes[i+1]);const t=a.toFixed(0)+'°';
+        x.lineWidth=3;x.strokeStyle=INK;x.strokeText(t,p[0]+10,p[1]);x.fillStyle=AMBER;x.fillText(t,p[0]+10,p[1])})}
+    x.restore();
+    x.fillStyle=LAB;x.font='600 12px '+getComputedStyle(document.body).fontFamily;x.textBaseline='alphabetic';x.fillText(V.n,off+2,top-7);
+    off+=w+GAP*s;
   });
-}
-let tick10=0;
-function readout(){
-  if(tick10++%5)return;
-  $('#ro').innerHTML='<table><thead><tr><th>Joint</th><th>Angle</th><th>Pulse µs</th><th>Range °</th></tr></thead><tbody>'+joints.map(j=>{const [l,h]=angLim(j,usDeg);
-    return '<tr><td>'+esc(j.name)+'</td><td>'+(cur[j.id]||0).toFixed(1)+'°</td><td>'+toUs(j,cur[j.id]||0,usDeg)+'</td><td>'+l.toFixed(0)+' to '+h.toFixed(0)+'</td></tr>'}).join('')
-    +'</tbody></table><p class="note">Pelvis height '+(pose.shift>=0?'+':'')+pose.shift.toFixed(1)+' mm.</p>';
 }
 
 // ---------- loop ----------
-let last=performance.now();
+let last=performance.now(),lastPel='';
 setInterval(()=>{
   const now=performance.now(),dt=Math.min(.1,(now-last)/1000);last=now;
   if(routine&&routine.fn(now/1000-routine.t0)===false)routine=null;
   joints.forEach(j=>cur[j.id]=slew(cur[j.id]||0,tgt[j.id]||0,dt,maxDps));
   const f=frame();if(f!==lastF||now-lastSend>250){send(f);lastF=f;lastSend=now}
-  if(mode==='cal'){calJ&&calShow();$('#calUs').textContent=calUs}
-  draw();readout();
+  draw();
+  const pt='Pelvis '+(pose.shift<-.05?'−'+(-pose.shift).toFixed(1):'0.0')+' mm';if(pt!==lastPel){$('#pel').textContent=pt;lastPel=pt}
+  document.querySelectorAll('.jr').forEach(r=>{const j=J(r.dataset.j),a=cur[j.id]||0;
+    r.querySelector('.ja').innerHTML='<b>'+a.toFixed(1)+'°</b> · '+toUs(j,a,usDeg)+' µs';
+    const ts=r.querySelector('.ts');if(document.activeElement!==ts)ts.value=Math.round(tgt[j.id]||0);
+    if(calJ===j)r.querySelector('.cus').textContent=calUs});
 },20);
 
 if(!('serial' in navigator)){$('#noserial').hidden=false;$('#btnConn').disabled=true}
