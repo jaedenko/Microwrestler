@@ -9,6 +9,7 @@ void put(int ch, int us) {
   if (us == 0) pwm.setPWM(ch, 0, 4096); else pwm.writeMicroseconds(ch, constrain(us, 500, 2500));
 }
 void parse() {
+  if (buf[0] == '?') { Serial.println(F("bridge ready")); return; }   // handshake: the web page asks if anyone is there
   if (buf[0] != 'P') return;
   char* p = buf + 1;
   for (int ch = 0; ch < 16; ch++) { while (*p == ' ') p++; if (!*p) break; put(ch, atoi(p)); while (*p && *p != ' ') p++; }
