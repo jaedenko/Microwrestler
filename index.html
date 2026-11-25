@@ -202,6 +202,7 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
       <h2 id="hMove">Squat</h2>
       <div class="big"><output id="dzv" for="dz">0.0</output><span>mm lower</span></div>
       <input id="dz" type="range" min="0" max="15" step="0.5" value="0" aria-label="Squat depth in millimetres">
+      <div class="row" role="group" aria-label="Which way the knee points"><span class="note" style="margin:0">Knee points</span><button data-kn="fwd" class="btn-pri">Forward</button><button data-kn="back">Backward</button></div>
       <div class="row mt">
         <button id="bStand" title="All joints to 0°">Reset pose</button>
         <button id="bLoop">Squat loop</button>
@@ -263,21 +264,21 @@ const G={ // CAD frame, mm, neutral pose (all joints 90 deg = straight)
   footC:[-46.4,5.7], footR:27.75, soleZ:-145.5, footTopZ:-143.8,
   pelvis:{lo:[-81.6,-31,6.4],hi:[45.4,21.2,41.2]}};
 const CORE=['yaw','hip','knee','ankle','roll'];
-const DEF0=[ // left leg channels count from the top: hip pitch 0, knee 1, ankle pitch 2, ankle roll 3. Hip yaw is not built yet, so it is off and parked on 4.
-  {id:'yaw',name:'Hip yaw',ch:4,sign:1,trim:0,lo:1060,hi:1940,on:false},
+const DEF0=[ // left leg channels: hip pitch 0, knee 1, ankle pitch 2, ankle roll 3, hip yaw 4 (the next free port). Servo 90 deg (1500 us) is the neutral of every joint, so the knee bends both ways.
+  {id:'yaw',name:'Hip yaw',ch:4,sign:1,trim:0,lo:1060,hi:1940,on:true},
   {id:'hip',name:'Hip pitch',ch:0,sign:1,trim:0,lo:730,hi:2270,on:true},
-  {id:'knee',name:'Knee',ch:1,sign:1,trim:0,lo:1500,hi:2270,on:true},
+  {id:'knee',name:'Knee',ch:1,sign:1,trim:0,lo:730,hi:2270,on:true},
   {id:'ankle',name:'Ankle pitch',ch:2,sign:1,trim:0,lo:730,hi:2270,on:true},
   {id:'roll',name:'Ankle roll',ch:3,sign:1,trim:0,lo:1060,hi:1940,on:true}].map(j=>({...j,side:'L'}));
 const DEF=[...DEF0,...DEF0.map((j,i)=>({...j,id:'r_'+j.id,ch:[9,5,6,7,8][i],side:'R',on:false}))]; // right leg: channels 5-9, off until built. Angles use the left leg's convention; the sim mirrors yaw and roll
 const wrap=a=>{while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.PI;return a};
-function legIK(dz){ // degrees [hip,knee,ankle], foot kept flat; null if out of reach (neutral leg is straight, dz<0 impossible)
+function legIK(dz,kneeBack){ // degrees [hip,knee,ankle], foot kept flat; null if out of reach (neutral leg is straight, dz<0 impossible). Two solutions: knee forward (default, knee angle +) or knee backward (knee angle -)
   const v1y=G.knee[1]-G.hip[1],v1z=G.knee[2]-G.hip[2],v2y=G.ankle[1]-G.knee[1],v2z=G.ankle[2]-G.knee[2];
   const ty=v1y+v2y,tz=v1z+v2z+dz,l1=Math.hypot(v1y,v1z),l2=Math.hypot(v2y,v2z);
   let c=(ty*ty+tz*tz-l1*l1-l2*l2)/(2*l1*l2);
   if(c>1.000001||c<-1)return null; c=Math.min(1,c);
   const a1=Math.atan2(v1z,v1y),a2=Math.atan2(v2z,v2y),ac=Math.acos(c);
-  const qa=wrap(ac-(a2-a1)),qb=wrap(-ac-(a2-a1)),r2=Math.abs(qa)<Math.abs(qb)?qa:qb;
+  const qa=wrap(ac-(a2-a1)),qb=wrap(-ac-(a2-a1)),r2=kneeBack?Math.min(qa,qb):Math.max(qa,qb);
   const ex=v1y+v2y*Math.cos(r2)-v2z*Math.sin(r2),ez=v1z+v2y*Math.sin(r2)+v2z*Math.cos(r2);
   const r1=Math.atan2(tz,ty)-Math.atan2(ez,ex);
   return [r1/RAD,r2/RAD,-(r1+r2)/RAD];
@@ -301,10 +302,11 @@ function fk(ang){ // ang = degrees [yaw,hip,knee,ankle,roll]; foot planted on th
 // CORE-END
 
 const $=s=>document.querySelector(s);
-const ld=k=>{try{return JSON.parse(localStorage.getItem('wb2.'+k))}catch(e){return null}};
+const ldv=(v,k)=>{try{return JSON.parse(localStorage.getItem('wb'+v+'.'+k))}catch(e){return null}},ld=k=>ldv(3,k)??ldv(2,k);
+const fixV2=j=>({...j,...(/knee$/.test(j.id)&&j.lo>=1500+j.trim-1?{lo:730}:{}),...(j.id==='yaw'&&j.on===false&&j.ch===4?{on:true}:{})}); // v2 saves: knee only went one way, hip yaw was off
 const norm=l=>{const o=l.map(j=>({side:j.extra?'X':'L',on:true,...j}));DEF.forEach(d=>{if(!o.some(j=>j.id===d.id))o.push({...d})});return o}; // old saves: add side + right leg
-let joints=norm(ld('joints')||[]),usDeg=ld('usDeg')||11,maxDps=ld('maxDps')||60;
-const sv=()=>{try{localStorage.setItem('wb2.joints',JSON.stringify(joints));localStorage.setItem('wb2.usDeg',usDeg);localStorage.setItem('wb2.maxDps',maxDps)}catch(e){}};
+let joints=norm(ldv(3,'joints')||(ldv(2,'joints')||[]).map(fixV2)),usDeg=ld('usDeg')||11,maxDps=ld('maxDps')||60;
+const sv=()=>{try{localStorage.setItem('wb3.joints',JSON.stringify(joints));localStorage.setItem('wb3.usDeg',usDeg);localStorage.setItem('wb3.maxDps',maxDps)}catch(e){}};
 const cur={},tgt={};
 let mode='rel',calJ=null,calUs=1500,calOut=1500,routine=null,pose={shift:0},wz=null; // calUs = where the calibrating servo should go, calOut = where it is now (eases at 500 µs/s)
 const J=id=>joints.find(j=>j.id===id);
@@ -315,8 +317,9 @@ const setDz=v=>{$('#dz').value=v;$('#dzv').textContent=(+v).toFixed(1)};
 // ---------- motion ----------
 const LEG={L:CORE,R:CORE.map(id=>'r_'+id)},SIDE={L:'Left',R:'Right'};
 const legAng=side=>LEG[side].map(id=>cur[id]||0);
+let kneeBack=false;
 function applySquat(dz){
-  const q=legIK(dz);
+  const q=legIK(dz,kneeBack);
   if(!q)return msg('Unreachable: the leg is straight at neutral, so it can only shorten.',1);
   const bad=[],set=[];
   for(const side of 'LR')['hip','knee','ankle'].forEach((n,i)=>{const id=side==='L'?n:'r_'+n,j=J(id),[l,h]=angLim(j,usDeg);
@@ -330,6 +333,7 @@ function stand(){joints.forEach(j=>tgt[j.id]=0);setDz(0)}
 const run=(name,fn)=>{routine={name,t0:performance.now()/1000,fn};$('#bLoop').classList.toggle('btn-pri',name==='loop')};
 function stopRoutine(){routine=null;$('#bLoop').classList.remove('btn-pri')}
 $('#dz').oninput=e=>{stopRoutine();setDz(+e.target.value);applySquat(+e.target.value)};
+document.querySelectorAll('[data-kn]').forEach(b=>b.onclick=()=>{kneeBack=b.dataset.kn==='back';document.querySelectorAll('[data-kn]').forEach(x=>x.classList.toggle('btn-pri',x===b));stopRoutine();applySquat(+$('#dz').value)});
 $('#bStand').onclick=()=>{stopRoutine();stand();msg('')};
 $('#bLoop').onclick=()=>{ if(routine&&routine.name==='loop'){stopRoutine();return}
   run('loop',t=>{const dz=(+$('#amp').value)*(1-Math.cos(2*Math.PI*t/4))/2;setDz(dz);if(!applySquat(dz)){stopRoutine();return false}})};
@@ -453,7 +457,7 @@ $('#bRes').onclick=()=>{if(confirm('Reset all joints and settings to defaults?')
 // Per installed joint: 1 centre, 2 direction (known joints), 3 negative end, 4 positive end, 5 range test.
 const HOW={yaw:{c:'the foot pointing straight ahead',pos:'the toes turn inward',neg:'the toes turn outward'},
   hip:{c:'the thigh hanging straight down',pos:'the thigh swings backward',neg:'the thigh swings forward'},
-  knee:{c:'the leg fully straight, with the shin in line with the thigh',pos:'the knee bends and the shin swings backward',neg:'the leg goes straighter than centre (most knees cannot)'},
+  knee:{c:'the leg fully straight, with the shin in line with the thigh',pos:'the knee bends and the shin swings backward',neg:'the knee bends the other way and the shin swings forward'},
   ankle:{c:'the foot flat, square to the shin',pos:'the toes tip down',neg:'the toes tip up'},
   roll:{c:'the foot level from side to side',pos:'the inner edge of the foot goes down',neg:'the outer edge of the foot goes down'}};
 const hid=j=>j.id.replace(/^r_/,''),known=j=>!!HOW[hid(j)];
