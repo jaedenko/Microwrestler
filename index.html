@@ -142,6 +142,18 @@ input[type=range].ts{background:linear-gradient(var(--ink),var(--ink)) center/2p
 .wiz th{text-align:left;color:var(--mut);font-weight:500}.wiz td,.wiz th{padding:4px 6px;border-bottom:1px solid var(--line)}
 .wiz ol{margin:0 0 12px;padding-left:20px}.wiz li{margin:4px 0}
 .mtab{margin-top:12px}
+.nav{display:flex;gap:4px;padding:0 24px;max-width:1360px;margin:0 auto 12px;overflow-x:auto}
+.nav button{border-radius:99px;padding:6px 18px;white-space:nowrap;background:transparent}
+.nav button[aria-current=page]{background:var(--pri);border-color:var(--pri);color:var(--priInk);font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;padding:0 24px 12px;max-width:1360px;margin:0 auto}
+.kpis div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;min-width:0}
+.kpis small{display:block;color:var(--mut);font-size:12.5px}.kpis b{font-family:var(--disp);font-size:18px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+@media (max-width:980px){.nav{padding:0 16px}.kpis{padding:0 16px 12px;grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pg-off{display:none!important}
+.live{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+.live th{text-align:left;color:var(--mut);font-weight:500}.live td,.live th{padding:4px 6px;border-bottom:1px solid var(--line)}
+.live .z{color:var(--mut)}.live th[scope],#sys th{width:40%}
+.bar2{position:relative;height:10px;border-radius:5px;background:var(--field);min-width:90px;margin-bottom:2px}.bar2 i{position:absolute;top:-2px;width:2px;height:14px;background:var(--mut)}.bar2 b{position:absolute;top:-3px;width:10px;height:16px;border-radius:5px;background:var(--pri);transform:translateX(-50%)}
 .sl{margin-top:10px}.sl label{display:flex;justify-content:space-between;font-size:14px;color:var(--mut)}.sl output{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 .inst{display:flex;align-items:center;gap:5px;font-size:13.5px;color:var(--mut)}
 .inst input{accent-color:var(--pri)}
@@ -164,13 +176,17 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
 </head>
 <body>
 <header>
-  <div class="brand"><img src="assets/logo.svg" width="44" height="44" alt=""><h1>Microwrestler bench</h1><span>Leg test and simulation</span></div>
+  <div class="brand"><img src="assets/logo.svg" width="44" height="44" alt=""><h1>Microwrestler bench</h1><span>Dashboard</span></div>
   <div class="bar">
     <span id="st" class="pill">Not connected</span>
     <button id="btnConn" class="btn-pri">Connect Nano</button>
     <button id="btnStop" class="btn-bad">Release all</button>
   </div>
 </header>
+<nav class="nav" id="nav" aria-label="Dashboard sections">
+  <button data-p="dash">Dashboard</button><button data-p="ctl">Control</button><button data-p="walk">Walk</button><button data-p="cal">Calibration</button><button data-p="set">Setup</button>
+</nav>
+<div class="kpis" id="kpis" aria-label="Status"><div><small>Servos</small><b id="kMode">Released</b></div><div><small>Running</small><b id="kRun">Nothing</b></div><div><small>Speed</small><b id="kSpd">1.00×</b></div><div><small>Servo limit</small><b id="kDps">120°/s</b></div><div><small>Deepest squat</small><b id="kDep">0 mm</b></div></div>
 <div id="alert" class="banner" role="alert" hidden></div>
 <div id="noserial" class="banner" hidden>This browser has no Web Serial, so the page works as a simulator only. Open it in Chrome or Edge to drive the Nano.</div>
 
@@ -187,9 +203,9 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
   </section>
 
   <div class="col">
-    <section class="card wiz" id="wiz" aria-live="polite" hidden></section>
+    <section class="card wiz" id="wiz" data-page="cal" aria-live="polite" hidden></section>
 
-    <section class="card" aria-labelledby="hMode">
+    <section class="card" data-page="ctl" aria-labelledby="hMode">
       <h2 id="hMode">Servos</h2>
       <div class="modes" id="modes">
         <button data-m="rel"><b>Released</b><small>No signal. Simulation only.</small></button>
@@ -199,7 +215,7 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
       <p class="note" id="modeNote"></p>
     </section>
 
-    <section class="card" aria-labelledby="hMove">
+    <section class="card" data-page="ctl" aria-labelledby="hMove">
       <h2 id="hMove">Squat</h2>
       <div class="big"><output id="dzv" for="dz">0.0</output><span>mm lower</span></div>
       <input id="dz" type="range" min="0" max="15" step="0.5" value="0" aria-label="Squat depth in millimetres">
@@ -214,7 +230,7 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
       <p class="note" id="dzmax"></p>
     </section>
 
-    <section class="card" aria-labelledby="hWalk">
+    <section class="card" data-page="walk" aria-labelledby="hWalk">
       <h2 id="hWalk">Walk and speed</h2>
       <div class="row"><button id="bWalk">Walk in place</button><span class="note" id="walkNote" style="margin:0"></span></div>
       <div class="sl"><label for="stride">Stride <output id="stridev">60%</output></label><input id="stride" type="range" min="10" max="100" step="5" value="60"></div>
@@ -224,25 +240,41 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
       <p class="note">Stride and foot lift are percentages of each joint's calibrated range, so the walk never asks for more than you measured. Speed scales Squat loop, Sweep and Walk. The servo speed limit caps how fast any servo may move, in the picture and on the leg.</p>
     </section>
 
-    <section class="card" aria-labelledby="hJoints">
-      <h2 id="hJoints">Joints</h2>
-      <div class="row"><button id="bGuide" class="btn-pri"></button><span class="note" style="margin:0">Walks you through each servo: centre, direction and both stops.</span></div>
+    <section class="card" data-page="cal" aria-labelledby="hJoints">
+      <h2 id="hJoints">Calibration</h2>
+      <div class="row"><button id="bGuide" class="btn-pri"></button><span class="note" style="margin:0">Or step through it: centre, direction and both stops.</span></div>
       <div class="tabs mtab" role="tablist" aria-label="Joint groups">
         <button role="tab" data-t="L">Left leg</button><button role="tab" data-t="R">Right leg</button><button role="tab" data-t="X">Arms and extras</button>
       </div>
       <div id="jt" role="tabpanel"></div>
       <p class="note warn" id="clash"></p>
       <div class="row mt"><button id="bResetTab" class="btn-quiet"></button><button id="bAdd">Add arm joint</button></div>
-      <p class="note">Each leg is calibrated on its own tab. Each slider moves one joint. The shaded part is the range its servo can reach. If the real joint moves the opposite way to the picture, open Calibrate and flip its direction.</p>
+      <p class="note">Each leg is calibrated on its own tab. The slider on a joint's row shows its angle and the shaded part is the range you set. Open Calibrate on a joint to drag its servo and set min and max. If the real joint moves the opposite way to the picture, flip its direction.</p>
     </section>
 
-    <section class="card">
+    <section class="card" data-page="dash" aria-labelledby="hLive">
+      <h2 id="hLive">Live servos</h2>
+      <table class="live"><thead><tr><th>Joint</th><th>Ch</th><th>Angle</th><th>Pulse</th><th>Position in calibrated range</th></tr></thead><tbody id="live"></tbody></table>
+      <p class="note">Only installed joints are listed. The bar runs from your min to your max angle; the tick is the centre.</p>
+    </section>
+
+    <section class="card" data-page="dash" aria-labelledby="hSys">
+      <h2 id="hSys">System</h2>
+      <table class="live"><tbody id="sys"></tbody></table>
+    </section>
+
+    <section class="card" data-page="dash" aria-labelledby="hTx">
+      <h2 id="hTx">Serial traffic</h2>
+      <pre id="log2" aria-live="off"></pre>
+    </section>
+
+    <section class="card" data-page="set">
       <details open>
         <summary>Setup steps</summary>
         <ol class="steps">
           <li>Flash <code>firmware/bridge/bridge.ino</code> to the Nano with the PCA9685 on A4 and A5. Plug the left leg servos into channels 0 to 4 and the right leg into 5 to 9 (hip yaw, hip pitch, knee, ankle pitch, ankle roll).</li>
           <li>Connect, then choose Horn mode. Every servo holds 90°. Fit the horns with each joint straight.</li>
-          <li>Calibrate each joint: set the centre, then the two mechanical stops.</li>
+          <li>Open Calibration. For each joint set the centre, then drag the Angle slider to each end and press Set min and Set max.</li>
           <li>Choose Run and try Squat and Sweep. Compare the real leg with the picture and flip any joint that disagrees.</li>
         </ol>
       </details>
@@ -319,7 +351,7 @@ const norm=l=>{const o=l.map(j=>({side:j.extra?'X':'L',on:true,...j}));DEF.forEa
 const fixV3=j=>/hip$/.test(j.id)&&j.sign===1?{...j,sign:-1}:j; // v3 saves: hip pitch was wired the wrong way round
 const saved=()=>{let j=ldv(4,'joints');if(j)return j;j=ldv(3,'joints');if(j)return j.map(fixV3);j=ldv(2,'joints');return j?j.map(fixV2).map(fixV3):[]};
 let joints=norm(saved()),usDeg=ld('usDeg')||11,maxDps=ld('maxDps')||120;
-const U=j=>j.usd||usDeg; // µs per degree for this joint: the global value, or what you measured for it
+const U=j=>j.usd||usDeg; // µs per degree: the global setting (a per-joint j.usd override is honoured if present)
 const sv=()=>{try{localStorage.setItem('wb4.joints',JSON.stringify(joints));localStorage.setItem('wb4.usDeg',usDeg);localStorage.setItem('wb4.maxDps',maxDps)}catch(e){}refreshDepth()};
 const cur={},tgt={};
 let mode='rel',calJ=null,calUs=1500,calOut=1500,routine=null,pose={shift:0},wz=null; // calUs = where the calibrating servo should go, calOut = where it is now (eases at 500 µs/s)
@@ -407,7 +439,8 @@ async function disconnect(){
 }
 $('#btnConn').onclick=()=>port?disconnect():connect();
 navigator.serial?.addEventListener?.('disconnect',e=>{if(e.target===port){dropPort();alertMsg('The Nano was unplugged. Servos release by themselves after 2 seconds.')}});
-function send(f){if(!ready||txBusy)return;txBusy=true;log(f,'>');writer.write(enc.encode(f)).catch(()=>{}).finally(()=>txBusy=false)}
+let txN=0;
+function send(f){if(!ready||txBusy)return;txBusy=true;txN++;log(f,'>');writer.write(enc.encode(f)).catch(()=>{}).finally(()=>txBusy=false)}
 function frame(){ // position in the frame = channel; 0 = released. Only installed joints are ever driven.
   const f=new Array(16).fill(0),on=joints.filter(j=>j.on); // always all 16 channels, so a channel nobody uses any more is released
   if(mode==='horn')on.forEach(j=>f[j.ch]=1500);
@@ -436,13 +469,15 @@ $('#btnStop').onclick=()=>{stopRoutine();setMode('rel');send(RELEASE)};
 let tab='L';
 const TABS={L:['Left leg','left leg'],R:['Right leg','right leg'],X:['Arms and extras','extras']};
 const defOf=j=>DEF.find(d=>d.id===j.id)||{ch:j.ch,sign:1,trim:0,lo:730,hi:2270};
-// real measured angles at the two stops -> this joint's own µs per degree (replaces the model/global value)
-function applyAngles(j,l,h){const u=(j.hi-j.lo)/(h-l);if(!(l<=0&&h>=0&&u>=3&&u<=30))return false;j.usd=Math.round(u*100)/100;j.amin=l;j.amax=h;tgt[j.id]=clampA(j,tgt[j.id]||0,U(j));sv();return true}
-function resetJ(j){const d=defOf(j);delete j.usd;delete j.amin;delete j.amax;Object.assign(j,{ch:d.ch,sign:d.sign,trim:d.trim,lo:d.lo,hi:d.hi,on:d.on??true});tgt[j.id]=clampA(j,tgt[j.id]||0,U(j));sv()}
+// calibration slider: the joint angle at this end becomes the stop (end = 'min' or 'max'); angles use the app's µs-per-degree (Settings)
+function setStop(j,end,a){if(end==='min'?a>0:a<0)return false;const us=Math.min(2500,Math.max(500,Math.round(1500+j.trim+j.sign*a*U(j))));
+  if((end==='min')===(j.sign>0))j.lo=us;else j.hi=us;tgt[j.id]=clampA(j,tgt[j.id]||0,U(j));sv();return true}
+function resetJ(j){const d=defOf(j);Object.assign(j,{ch:d.ch,sign:d.sign,trim:d.trim,lo:d.lo,hi:d.hi,on:d.on??true});tgt[j.id]=clampA(j,tgt[j.id]||0,U(j));sv()}
 function clash(){const seen={},d=[];joints.forEach(j=>{if(seen[j.ch]!==undefined)d.push(j.ch);seen[j.ch]=1});$('#clash').textContent=d.length?'Channel '+[...new Set(d)].join(', ')+' is used by two joints.':''}
 function paint(row,j){const [l,h]=angLim(j,U(j)),a=(Math.max(-90,l)+90)/1.8,b=(Math.min(90,h)+90)/1.8;
   row.querySelector('.ts').style.setProperty('--g','linear-gradient(to right,var(--off) '+a+'%,var(--on) '+a+'%,var(--on) '+b+'%,var(--off) '+b+'%)')}
-function sync(row,j){row.querySelectorAll('input[data-k]').forEach(i=>{if(i.type==='checkbox')i.checked=!!j[i.dataset.k];else if(document.activeElement!==i){const k=i.dataset.k,[l,h]=angLim(j,U(j));i.value=k==='amin'?Math.round((j.amin??l)*10)/10:k==='amax'?Math.round((j.amax??h)*10)/10:j[k]}});row.classList.toggle('off',!j.on);row.querySelector('[data-a=cal]').disabled=!j.on;
+function sync(row,j){row.querySelectorAll('input[data-k]').forEach(i=>{if(i.type==='checkbox')i.checked=!!j[i.dataset.k];else if(document.activeElement!==i)i.value=j[i.dataset.k]});row.classList.toggle('off',!j.on);row.querySelector('[data-a=cal]').disabled=!j.on;
+  const [l,h]=angLim(j,U(j));row.querySelector('.rng').textContent='Min '+l.toFixed(1)+'°  ·  Max '+h.toFixed(1)+'°';
   row.querySelector('.ch').textContent='ch '+j.ch;row.querySelector('[data-a=sign]').textContent='Direction '+(j.sign>0?'+':'−');paint(row,j)}
 function renderJoints(){
   const box=$('#jt');box.innerHTML='';
@@ -459,27 +494,26 @@ function renderJoints(){
       +'<div class="cp" hidden><div class="cg">'
       +'<label>Channel<input data-k="ch" type="number" min="0" max="15"></label>'
       +'<label>Centre µs<input data-k="trim" type="number"></label>'
-      +'<label>Low stop µs<input data-k="lo" type="number"></label>'
-      +'<label>High stop µs<input data-k="hi" type="number"></label>'
-      +'<label>Min angle °<input data-k="amin" type="number" step="0.5"></label>'
-      +'<label>Max angle °<input data-k="amax" type="number" step="0.5"></label></div>'
+      +'</div><div class="sl"><label>Angle <output class="cav">0.0°</output></label><input class="cs" type="range" min="-90" max="90" step="0.5" value="0" aria-label="Move the servo to find a limit"></div>'
+      +'<div class="row"><button data-a="smin">Set min here</button><button data-a="smax">Set max here</button><span class="note rng" style="margin:0"></span></div>'
       +'<div class="row mt nudge"><button data-n="-10">−10</button><button data-n="-1">−1</button><button data-n="1">+1</button><button data-n="10">+10</button><span class="pulse">Pulse <b class="cus">1500</b> µs</span></div>'
-      +'<div class="row mt"><button data-a="sc">Set centre</button><button data-a="sl">Set low stop</button><button data-a="sh">Set high stop</button><button data-a="sign"></button><button data-a="rj">Reset joint</button>'+(j.extra?'<button data-a="del">Remove joint</button>':'')+'</div>'
-      +'<p class="note">Only this servo is driven. Centre is the joint straight. Stops are the two mechanical ends, backed off a little. Min and Max angle are what you measure at those stops (a protractor or phone level); the squat, sweep and walk then stay inside them. A knee or elbow only bends one way.</p></div>';
+      +'<div class="row mt"><button data-a="sc">Set centre</button><button data-a="sign"></button><button data-a="rj">Reset joint</button>'+(j.extra?'<button data-a="del">Remove joint</button>':'')+'</div>'
+      +'<p class="note">Only this servo is driven. Set the centre first (joint straight). Then drag Angle until the joint is just short of its mechanical end and press Set min or Set max. The squat, sweep and walk stay inside these limits. A knee or elbow only bends one way.</p></div>';
     const ts=row.querySelector('.ts');
     row.querySelectorAll('input[data-k]').forEach(i=>i.onchange=()=>{const k=i.dataset.k;if(k==='on'&&!i.checked&&calJ===j)setMode('rel');
-      if(k==='amin'||k==='amax'){const [l,h]=angLim(j,U(j));if(!applyAngles(j,k==='amin'?+i.value:j.amin??l,k==='amax'?+i.value:j.amax??h))alertMsg('Angles need min ≤ 0 ≤ max and 3–30 µs per degree.');else alertMsg('')}
-      else{j[k]=k==='name'?i.value:k==='on'?i.checked:+i.value;if(k!=='name'&&k!=='on'){delete j.amin;delete j.amax}}
+      j[k]=k==='name'?i.value:k==='on'?i.checked:+i.value;
       tgt[j.id]=clampA(j,tgt[j.id],U(j));sv();clash();sync(row,j)});
     ts.oninput=()=>{stopRoutine();tgt[j.id]=clampA(j,+ts.value,U(j));ts.value=Math.round(tgt[j.id])};
     row.querySelector('[data-a=sign]').onclick=()=>{j.sign*=-1;tgt[j.id]=clampA(j,tgt[j.id],U(j));sv();sync(row,j)};
     row.querySelector('[data-a=cal]').onclick=()=>{ if(wz)wzHide(); if(row.classList.contains('open')){setMode('rel');return}
       closePanels();row.classList.add('open');row.querySelector('.cp').hidden=false;row.querySelector('[data-a=cal]').setAttribute('aria-expanded','true');
-      calJ=j;calUs=calOut=1500+j.trim;setMode('cal')};
+      calJ=j;calUs=calOut=1500+j.trim;row.querySelector('.cs').value=0;row.querySelector('.cav').textContent='0.0°';setMode('cal')};
     row.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{calUs=Math.min(2500,Math.max(500,calUs+ +b.dataset.n))});
     row.querySelector('[data-a=sc]').onclick=()=>{j.trim=calUs-1500;sv();sync(row,j)};
-    row.querySelector('[data-a=sl]').onclick=()=>{j.lo=calUs;sv();sync(row,j)};
-    row.querySelector('[data-a=sh]').onclick=()=>{j.hi=calUs;sv();sync(row,j)};
+    const cs=row.querySelector('.cs'),cav=row.querySelector('.cav');
+    cs.oninput=()=>{calUs=Math.min(2500,Math.max(500,1500+j.trim+j.sign*(+cs.value)*U(j)));cav.textContent=(+cs.value).toFixed(1)+'°'};
+    ['min','max'].forEach(e=>row.querySelector('[data-a=s'+e+']').onclick=()=>{
+      if(!setStop(j,e,+cs.value))alertMsg('Set min with the slider at or below 0°, and max at or above 0°.');else alertMsg('');sync(row,j)});
     row.querySelector('[data-a=rj]').onclick=()=>{if(calJ===j)setMode('rel');resetJ(j);clash();renderJoints()};
     const del=row.querySelector('[data-a=del]');if(del)del.onclick=()=>{joints=joints.filter(x=>x!==j);sv();if(calJ===j)setMode('rel');renderJoints()};
     sync(row,j);box.appendChild(row);
@@ -510,7 +544,7 @@ const HOW={yaw:{c:'the foot pointing straight ahead',pos:'the toes turn inward',
   roll:{c:'the foot level from side to side',pos:'the inner edge of the foot goes down',neg:'the outer edge of the foot goes down'}};
 const hid=j=>j.id.replace(/^r_/,''),known=j=>!!HOW[hid(j)];
 const howOf=j=>HOW[hid(j)]||{c:'the joint straight',pos:'it moves the + way',neg:'it moves the − way'};
-const stepsOf=j=>known(j)?['centre','dir','neg','pos','angle','test']:['centre','neg','pos','angle','test'];
+const stepsOf=j=>known(j)?['centre','dir','neg','pos','test']:['centre','neg','pos','test'];
 const wzJ=()=>wz&&wz.ji>=0&&wz.ji<wz.list.length?wz.list[wz.ji]:null;
 const wzStep=()=>!wz?'':wz.ji<0?'intro':wz.ji>=wz.list.length?'outro':stepsOf(wzJ())[wz.si];
 const cen=j=>1500+j.trim,margin=j=>Math.round(3*U(j)); // back off ~3° from a stop so the servo never rests against it
@@ -518,7 +552,7 @@ const clampUs=v=>Math.min(2500,Math.max(500,v));
 function wzStart(){
   const list=joints.filter(j=>(j.side||'X')===tab&&j.on);
   if(!list.length)return alertMsg('Nothing to calibrate here: tick Installed on the joints that are built.');
-  alertMsg('');if(mode==='cal')setMode('rel');
+  alertMsg('');if(mode==='cal')setMode('rel');showPage('cal');
   wz={list,ji:-1,si:0,done:new Set(),tmp:{},play:null,name:TABS[tab][1]};wzEnter();
   $('#wiz').scrollIntoView({block:'nearest',behavior:'smooth'});
 }
@@ -529,7 +563,6 @@ function wzEnter(){
     if(s==='centre')calUs=calOut=c;
     else if(s==='dir')calUs=c+j.sign*15*U(j);
     else if(s==='neg'||s==='pos')calUs=c;
-    else if(s==='angle'&&j.hi<=j.lo)return wzAdvance(); // no travel was found, nothing to measure
     else if(s==='test'){const t=wz.tmp[j.id]||{};wz.play=[t.neg??c,t.pos??c,c];calUs=wz.play[0]}}
   setMode('cal');wzRender();
 }
@@ -537,7 +570,7 @@ function wzAdvance(){const j=wzJ();wz.si++;if(wz.si>=stepsOf(j).length){wz.done.
 function wzBack(){if(wz.si>0)wz.si--;else if(wz.ji>=0){wz.ji--;wz.si=wz.ji>=0?stepsOf(wz.list[wz.ji]).length-1:0}wzEnter()}
 function wzEnd(j,key,skip){const c=cen(j),t=calUs,end=skip||Math.abs(t-c)<=margin(j)?c:clampUs(t+(c>t?1:-1)*margin(j)); // travel shorter than the back-off counts as no travel, never back off past centre
   (wz.tmp[j.id]??={})[key]=end;
-  if(key==='pos'){delete j.amin;delete j.amax;const m=wz.tmp[j.id];j.lo=Math.min(m.neg??c,end);j.hi=Math.max(m.neg??c,end);tgt[j.id]=clampA(j,0,U(j));sv();renderJoints()}}
+  if(key==='pos'){const m=wz.tmp[j.id];j.lo=Math.min(m.neg??c,end);j.hi=Math.max(m.neg??c,end);tgt[j.id]=clampA(j,0,U(j));sv();renderJoints()}}
 function wzNudge(n){const j=wzJ();if(!j)return;calUs=clampUs(calUs+(wzStep()==='centre'?1:j.sign)*n)}
 function wzAct(act,arg){
   const j=wzJ(),s=wzStep();
@@ -547,10 +580,7 @@ function wzAct(act,arg){
     if(s==='centre'){j.trim=Math.round(calUs-1500);sv();renderJoints()}
     else if(s==='neg')wzEnd(j,'neg');else if(s==='pos')wzEnd(j,'pos');
     wzAdvance()}
-  else if(act==='skip'){if(s!=='angle')wzEnd(j,s,1);wzAdvance()}
-  else if(act==='ang'){const [l,h]=angLim(j,U(j)),a=+$('#wzMin').value,b=+$('#wzMax').value;
-    if(!applyAngles(j,a,b)){$('#wzAerr').textContent='Needs min ≤ 0 ≤ max, and 3–30 µs per degree for the span you set.';return}
-    renderJoints();wzAdvance()}
+  else if(act==='skip'){wzEnd(j,s,1);wzAdvance()}
   else if(act==='flip'){j.sign*=-1;sv();renderJoints();calUs=cen(j)+j.sign*15*U(j);wz.flipped=true;wzRender()}
   else if(act==='back')wzBack();
   else if(act==='replay'){const t=wz.tmp[j.id]||{},c=cen(j);wz.play=[t.neg??c,t.pos??c,c];calUs=wz.play[0]}
@@ -580,10 +610,6 @@ function wzRender(){
     else if(s==='neg'||s==='pos'){const neg=s==='neg';
       h=head+'<h2>'+esc(j.name)+': find the '+(neg?'− end':'+ end')+'</h2><p class="wzp">Press <b>'+(neg?'−':'+')+'</b> until <b>'+(neg?w.neg:w.pos)+'</b> and the joint touches its mechanical stop. <b>Stop the moment it touches.</b> Pushing on a stop strains the servo. Then press the button below; I back off 3° for you.</p>'+pulse+nudge('Buttons move the joint in angle: − and + match the labels above.')
         +nav(["It's touching"],'<button data-act="skip">It can\'t move this way</button>')}
-    else if(s==='angle'){const [l,h2]=angLim(j,U(j)),r1=v=>Math.round(v*10)/10;
-      h=head+'<h2>'+esc(j.name)+': measure the real angles</h2><p class="wzp">The numbers below come from the model. Replace them with what you measure at each stop (centre = 0°). The animations will use these, so the leg never goes past what you measured. Skip to keep the model values.</p>'
-        +'<div class="cg"><label>Min angle °<input id="wzMin" type="number" step="0.5" value="'+r1(j.amin??l)+'"></label><label>Max angle °<input id="wzMax" type="number" step="0.5" value="'+r1(j.amax??h2)+'"></label></div><p class="note warn" id="wzAerr"></p>'
-        +nav(['Save angles','ang'],'<button data-act="skip">Skip</button>')}
     else if(s==='test')h=head+'<h2>'+esc(j.name)+': watch the range</h2><p class="wzp">The joint sweeps from one end to the other and back to centre. It should move smoothly and never press on a stop.</p>'+pulse+nav(['Looks good'],'<button data-act="replay">Replay</button>')
   }
   el.innerHTML=h;
@@ -647,14 +673,30 @@ async function init3d(){
 init3d().catch(e=>{const m=$('#glmsg');m.hidden=false;m.textContent='The 3D view could not start ('+e.message+'). Controls still work.';$('#cv').style.display='none';document.querySelector('.views').hidden=true});
 
 setDps(maxDps);refreshDepth();
+// ---------- dashboard ----------
+let page='dash';
+function showPage(p){page=p;if(typeof alertMsg==='function')alertMsg('');document.querySelectorAll('[data-page]').forEach(e=>e.classList.toggle('pg-off',e.dataset.page!==p));
+  document.querySelectorAll('#nav [data-p]').forEach(b=>{if(b.dataset.p===p)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')})}
+document.querySelectorAll('#nav [data-p]').forEach(b=>b.onclick=()=>showPage(b.dataset.p));
+const MODES={rel:'Released',horn:'Horn (90°)',run:'Run',cal:'Calibrating'};
+function dash(){
+  $('#kMode').textContent=MODES[mode]||mode;$('#kRun').textContent=routine?routine.name==='loop'?'Squat loop':routine.name[0].toUpperCase()+routine.name.slice(1):'Nothing';
+  $('#kSpd').textContent=speed.toFixed(2)+'×';$('#kDps').textContent=Math.round(maxDps)+'°/s';$('#kDep').textContent=($('#dz').max||0)+' mm';
+  if(page!=='dash')return;
+  $('#live').innerHTML=joints.filter(j=>j.on).map(j=>{const [l,h]=angLim(j,U(j)),a=cur[j.id]||0;
+    return '<tr><td>'+(j.side==='L'?'L ':j.side==='R'?'R ':'')+esc(j.name)+'</td><td>'+j.ch+'</td><td>'+a.toFixed(1)+'°</td><td>'+(mode==='rel'?'<span class="z">off</span>':toUs(j,a,U(j))+' µs')+'</td><td><div class="bar2" title="'+l.toFixed(1)+'° to '+h.toFixed(1)+'°"><i style="left:'+(h>l?(-l/(h-l)*100):50)+'%"></i><b style="left:'+Math.min(100,Math.max(0,h>l?(a-l)/(h-l)*100:50))+'%"></b></div><span class="z">'+l.toFixed(0)+'° … '+h.toFixed(0)+'°</span></td></tr>'}).join('');
+  const age=lastSend?((performance.now()-lastSend)/1000).toFixed(1)+' s ago':'never',rows=[['Connection',$('#st').textContent],['Servo mode',MODES[mode]||mode],['Routine',routine?routine.name+' at '+routine.t.toFixed(1)+' s':'none'],
+    ['Knee points',kneeBack?'Backward':'Forward'],['Squat depth',$('#dz').value+' mm of '+$('#dz').max],['Pelvis shift',pose.shift.toFixed(1)+' mm'],['Frames sent',txN],['Last frame',age],['Driven channels',(lastF.match(/ (?!0\b)\d+/g)||[]).length]];
+  $('#sys').innerHTML=rows.map(r=>'<tr><th>'+r[0]+'</th><td>'+esc(r[1])+'</td></tr>').join('');$('#log2').textContent=logEl.textContent}
+showPage('dash');
 // ---------- loop ----------
-let last=performance.now(),lastPel='';
+let last=performance.now(),lastPel='',lastDash=0;
 setInterval(()=>{
   const now=performance.now(),dt=Math.min(.1,(now-last)/1000);last=now;
   if(routine){routine.t+=dt*speed;if(routine.fn(routine.t)===false)routine=null}
   joints.forEach(j=>cur[j.id]=slew(cur[j.id]||0,tgt[j.id]||0,dt,maxDps));
   if(mode==='cal')calOut+=Math.max(-10,Math.min(10,calUs-calOut)); // 500 µs/s so a servo never snaps into a stop
-  wzTick();walkLag();
+  wzTick();walkLag();if(now-lastDash>250){lastDash=now;dash()}
   const f=frame();if(f!==lastF||now-lastSend>250){send(f);lastF=f;lastSend=now}
   {const pl=fk(legAng('L')),pr=fk(legAng('R'));pose={shift:Math.max(pl.shift,pr.shift)}} // pelvis rests on the longer leg
   if(gl)gl.update();
