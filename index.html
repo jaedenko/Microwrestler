@@ -142,6 +142,7 @@ input[type=range].ts{background:linear-gradient(var(--ink),var(--ink)) center/2p
 .wiz th{text-align:left;color:var(--mut);font-weight:500}.wiz td,.wiz th{padding:4px 6px;border-bottom:1px solid var(--line)}
 .wiz ol{margin:0 0 12px;padding-left:20px}.wiz li{margin:4px 0}
 .mtab{margin-top:12px}
+.sl{margin-top:10px}.sl label{display:flex;justify-content:space-between;font-size:14px;color:var(--mut)}.sl output{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 .inst{display:flex;align-items:center;gap:5px;font-size:13.5px;color:var(--mut)}
 .inst input{accent-color:var(--pri)}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px;overflow-x:auto}
@@ -210,6 +211,17 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
         <button id="bSweep">Sweep joints</button>
       </div>
       <p class="note" id="mmsg"></p>
+      <p class="note" id="dzmax"></p>
+    </section>
+
+    <section class="card" aria-labelledby="hWalk">
+      <h2 id="hWalk">Walk and speed</h2>
+      <div class="row"><button id="bWalk">Walk in place</button><span class="note" id="walkNote" style="margin:0"></span></div>
+      <div class="sl"><label for="stride">Stride <output id="stridev">60%</output></label><input id="stride" type="range" min="10" max="100" step="5" value="60"></div>
+      <div class="sl"><label for="lift">Foot lift <output id="liftv">50%</output></label><input id="lift" type="range" min="0" max="100" step="5" value="50"></div>
+      <div class="sl"><label for="spd">Speed <output id="spdv">1.00×</output></label><input id="spd" type="range" min="0.25" max="2" step="0.05" value="1"></div>
+      <div class="sl"><label for="dpsr">Servo speed limit <output id="dpsv">120°/s</output></label><input id="dpsr" type="range" min="20" max="400" step="10" value="120"></div>
+      <p class="note">Stride and foot lift are percentages of each joint's calibrated range, so the walk never asks for more than you measured. Speed scales Squat loop, Sweep and Walk. The servo speed limit caps how fast any servo may move, in the picture and on the leg.</p>
     </section>
 
     <section class="card" aria-labelledby="hJoints">
@@ -238,7 +250,6 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
         <summary>Settings</summary>
         <div class="row">
           <label>µs per degree <input id="usd" type="number" min="5" max="20" step="0.1"></label>
-          <label>Speed limit °/s <input id="dps" type="number" min="5" max="300" step="5"></label>
         </div>
         <div class="row mt">
           <button id="bExp">Export settings</button>
@@ -266,7 +277,7 @@ const G={ // CAD frame, mm, neutral pose (all joints 90 deg = straight)
 const CORE=['yaw','hip','knee','ankle','roll'];
 const DEF0=[ // left leg channels: hip pitch 0, knee 1, ankle pitch 2, ankle roll 3, hip yaw 4 (the next free port). Servo 90 deg (1500 us) is the neutral of every joint, so the knee bends both ways.
   {id:'yaw',name:'Hip yaw',ch:4,sign:1,trim:0,lo:1060,hi:1940,on:true},
-  {id:'hip',name:'Hip pitch',ch:0,sign:1,trim:0,lo:730,hi:2270,on:true},
+  {id:'hip',name:'Hip pitch',ch:0,sign:-1,trim:0,lo:730,hi:2270,on:true},
   {id:'knee',name:'Knee',ch:1,sign:1,trim:0,lo:730,hi:2270,on:true},
   {id:'ankle',name:'Ankle pitch',ch:2,sign:1,trim:0,lo:730,hi:2270,on:true},
   {id:'roll',name:'Ankle roll',ch:3,sign:1,trim:0,lo:1060,hi:1940,on:true}].map(j=>({...j,side:'L'}));
@@ -302,11 +313,14 @@ function fk(ang){ // ang = degrees [yaw,hip,knee,ankle,roll]; foot planted on th
 // CORE-END
 
 const $=s=>document.querySelector(s);
-const ldv=(v,k)=>{try{return JSON.parse(localStorage.getItem('wb'+v+'.'+k))}catch(e){return null}},ld=k=>ldv(3,k)??ldv(2,k);
+const ldv=(v,k)=>{try{return JSON.parse(localStorage.getItem('wb'+v+'.'+k))}catch(e){return null}},ld=k=>ldv(4,k)??ldv(3,k)??ldv(2,k);
 const fixV2=j=>({...j,...(/knee$/.test(j.id)&&j.lo>=1500+j.trim-1?{lo:730}:{}),...(j.id==='yaw'&&j.on===false&&j.ch===4?{on:true}:{})}); // v2 saves: knee only went one way, hip yaw was off
 const norm=l=>{const o=l.map(j=>({side:j.extra?'X':'L',on:true,...j}));DEF.forEach(d=>{if(!o.some(j=>j.id===d.id))o.push({...d})});return o}; // old saves: add side + right leg
-let joints=norm(ldv(3,'joints')||(ldv(2,'joints')||[]).map(fixV2)),usDeg=ld('usDeg')||11,maxDps=ld('maxDps')||60;
-const sv=()=>{try{localStorage.setItem('wb3.joints',JSON.stringify(joints));localStorage.setItem('wb3.usDeg',usDeg);localStorage.setItem('wb3.maxDps',maxDps)}catch(e){}};
+const fixV3=j=>/hip$/.test(j.id)&&j.sign===1?{...j,sign:-1}:j; // v3 saves: hip pitch was wired the wrong way round
+const saved=()=>{let j=ldv(4,'joints');if(j)return j;j=ldv(3,'joints');if(j)return j.map(fixV3);j=ldv(2,'joints');return j?j.map(fixV2).map(fixV3):[]};
+let joints=norm(saved()),usDeg=ld('usDeg')||11,maxDps=ld('maxDps')||120;
+const U=j=>j.usd||usDeg; // µs per degree for this joint: the global value, or what you measured for it
+const sv=()=>{try{localStorage.setItem('wb4.joints',JSON.stringify(joints));localStorage.setItem('wb4.usDeg',usDeg);localStorage.setItem('wb4.maxDps',maxDps)}catch(e){}refreshDepth()};
 const cur={},tgt={};
 let mode='rel',calJ=null,calUs=1500,calOut=1500,routine=null,pose={shift:0},wz=null; // calUs = where the calibrating servo should go, calOut = where it is now (eases at 500 µs/s)
 const J=id=>joints.find(j=>j.id===id);
@@ -317,28 +331,56 @@ const setDz=v=>{$('#dz').value=v;$('#dzv').textContent=(+v).toFixed(1)};
 // ---------- motion ----------
 const LEG={L:CORE,R:CORE.map(id=>'r_'+id)},SIDE={L:'Left',R:'Right'};
 const legAng=side=>LEG[side].map(id=>cur[id]||0);
-let kneeBack=false;
+let kneeBack=false,speed=1,WALK_T=2;
+// which installed joints would leave their calibrated range for this squat solution? (limits come from YOUR calibration, not the model)
+function badJoints(q){const bad=[];
+  for(const side of 'LR')['hip','knee','ankle'].forEach((n,i)=>{const id=side==='L'?n:'r_'+n,j=J(id),[l,h]=angLim(j,U(j));
+    if(j.on&&(q[i]<l-1e-6||q[i]>h+1e-6))bad.push(SIDE[side].toLowerCase()+' '+n+' '+q[i].toFixed(1)+'°')});return bad}
 function applySquat(dz){
   const q=legIK(dz,kneeBack);
   if(!q)return msg('Unreachable: the leg is straight at neutral, so it can only shorten.',1);
-  const bad=[],set=[];
-  for(const side of 'LR')['hip','knee','ankle'].forEach((n,i)=>{const id=side==='L'?n:'r_'+n,j=J(id),[l,h]=angLim(j,usDeg);
-    if(j.on&&(q[i]<l-1e-6||q[i]>h+1e-6))bad.push(SIDE[side].toLowerCase()+' '+n+' '+q[i].toFixed(1)+'°');set.push([id,q[i]])});
-  if(bad.length)return msg('Outside servo limits: '+bad.join(', ')+'. Squat less or widen the stops.',1);
-  set.forEach(([id,v])=>tgt[id]=v);
+  const bad=badJoints(q);
+  if(bad.length)return msg('Outside your calibrated range: '+bad.join(', ')+'. Squat less or widen the stops.',1);
+  ['hip','knee','ankle'].forEach((n,i)=>{tgt[n]=q[i];tgt['r_'+n]=q[i]});
   msg('Both legs: hip '+q[0].toFixed(1)+'°, knee '+q[1].toFixed(1)+'°, ankle '+q[2].toFixed(1)+'°');
   return true;
 }
+function refreshDepth(){ // deepest squat the calibrated ranges allow; the slider stops there
+  const dz=$('#dz');if(!dz)return;let m=0;
+  for(let d=0.5;d<=60;d+=0.5){const q=legIK(d,kneeBack);if(!q||badJoints(q).length)break;m=d}
+  dz.max=m;$('#amp').max=m;if(+dz.value>m)setDz(m);if(+$('#amp').value>m)$('#amp').value=m;
+  $('#dzmax').textContent=m>0?'Deepest squat with your calibrated ranges: '+m.toFixed(1)+' mm.':'Your calibrated ranges allow no squat yet. Widen the hip, knee or ankle stops.'}
 function stand(){joints.forEach(j=>tgt[j.id]=0);setDz(0)}
-const run=(name,fn)=>{routine={name,t0:performance.now()/1000,fn};$('#bLoop').classList.toggle('btn-pri',name==='loop')};
-function stopRoutine(){routine=null;$('#bLoop').classList.remove('btn-pri')}
+const mark=()=>{$('#bLoop').classList.toggle('btn-pri',routine?.name==='loop');$('#bWalk').classList.toggle('btn-pri',routine?.name==='walk')};
+const run=(name,fn)=>{routine={name,t:0,fn};mark()};
+function stopRoutine(){routine=null;mark()}
 $('#dz').oninput=e=>{stopRoutine();setDz(+e.target.value);applySquat(+e.target.value)};
-document.querySelectorAll('[data-kn]').forEach(b=>b.onclick=()=>{kneeBack=b.dataset.kn==='back';document.querySelectorAll('[data-kn]').forEach(x=>x.classList.toggle('btn-pri',x===b));stopRoutine();applySquat(+$('#dz').value)});
+document.querySelectorAll('[data-kn]').forEach(b=>b.onclick=()=>{kneeBack=b.dataset.kn==='back';document.querySelectorAll('[data-kn]').forEach(x=>x.classList.toggle('btn-pri',x===b));stopRoutine();refreshDepth();applySquat(+$('#dz').value)});
 $('#bStand').onclick=()=>{stopRoutine();stand();msg('')};
 $('#bLoop').onclick=()=>{ if(routine&&routine.name==='loop'){stopRoutine();return}
   run('loop',t=>{const dz=(+$('#amp').value)*(1-Math.cos(2*Math.PI*t/4))/2;setDz(dz);if(!applySquat(dz)){stopRoutine();return false}})};
+// sweep: each joint goes to 90% of its calibrated range on both sides (not a fixed ±15°), one joint at a time
 $('#bSweep').onclick=()=>{stopRoutine();stand();run('sweep',t=>{const k=Math.floor(t/4);if(k>=CORE.length){stand();stopRoutine();return false}
-  for(const side of 'LR')LEG[side].forEach((id,i)=>tgt[id]=i===k?clampA(J(id),15*Math.sin(2*Math.PI*(t%4)/4),usDeg):0)});msg('Sweeping each joint of both legs ±15°, 4 s each.')};
+  const x=Math.sin(2*Math.PI*(t%4)/4);
+  for(const side of 'LR')LEG[side].forEach((id,i)=>{const j=J(id),[l,h]=angLim(j,U(j));tgt[id]=i===k?0.9*(x>=0?Math.max(h,0):Math.max(-l,0))*x:0})});
+  msg('Sweeping each joint across 90% of its calibrated range, 4 s each.')};
+// walk in place: hip swings between the calibrated stride limits, knee lifts the foot in the swing half, ankle keeps the foot flat; legs half a cycle apart
+$('#bWalk').onclick=()=>{ if(routine&&routine.name==='walk'){stopRoutine();return}
+  stopRoutine();stand();
+  run('walk',t=>{const st=+$('#stride').value/100,lf=+$('#lift').value/100;
+    for(const side of 'LR'){const [yi,hi,ki,ai,ri]=LEG[side],H=J(hi),K=J(ki),A=J(ai),ph=(t/WALK_T+(side==='R'?.5:0))%1,[hl,hh]=angLim(H,U(H)),[kl,kh]=angLim(K,U(K));
+      const fwd=Math.min(hl,0)*st,back=Math.max(hh,0)*st,hip=(fwd+back)/2+(back-fwd)/2*Math.cos(2*Math.PI*ph);
+      const bend=kneeBack?-Math.max(-kl,0):Math.max(kh,0),knee=bend*lf*Math.max(0,Math.sin(2*Math.PI*ph));
+      tgt[hi]=clampA(H,hip,U(H));tgt[ki]=clampA(K,knee,U(K));tgt[ai]=clampA(A,-(hip+knee),U(A));tgt[yi]=0;tgt[ri]=0}})};
+const spd=(id,txt)=>{$('#'+id+'v').textContent=txt};
+$('#spd').oninput=e=>{speed=+e.target.value;spd('spd',speed.toFixed(2)+'×')};
+$('#stride').oninput=e=>spd('stride',e.target.value+'%');$('#lift').oninput=e=>spd('lift',e.target.value+'%');
+const setDps=v=>{maxDps=Math.max(5,+v||120);$('#dpsr').value=maxDps;spd('dps',Math.round(maxDps)+'°/s')};
+$('#dpsr').oninput=e=>{setDps(e.target.value);sv()};
+let lagNote='';
+function walkLag(){if(routine?.name!=='walk'){if(lagNote){lagNote='';$('#walkNote').textContent=''}return}
+  const lag=Math.max(...joints.map(j=>Math.abs((tgt[j.id]||0)-(cur[j.id]||0)))),t=lag>6?'Falling behind: raise the servo speed limit or lower Speed.':'Keeping up with the walk.';
+  if(t!==lagNote){lagNote=t;$('#walkNote').textContent=t;$('#walkNote').className='note'+(lag>6?' warn':'')}}
 
 // ---------- serial ----------
 const RELEASE='P '+new Array(16).fill(0).join(' ')+'\n',enc=new TextEncoder(),sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -371,7 +413,7 @@ function frame(){ // position in the frame = channel; 0 = released. Only install
   if(mode==='horn')on.forEach(j=>f[j.ch]=1500);
   else if(mode==='cal'){if(wz)wz.done.forEach(id=>{const j=J(id);if(j&&j.on)f[j.ch]=1500+j.trim}); // finished joints hold their centre
     if(calJ)f[calJ.ch]=Math.round(calOut)}
-  else if(mode==='run')on.forEach(j=>f[j.ch]=toUs(j,cur[j.id]||0,usDeg));
+  else if(mode==='run')on.forEach(j=>f[j.ch]=toUs(j,cur[j.id]||0,U(j)));
   return 'P '+f.join(' ')+'\n';
 }
 
@@ -394,11 +436,13 @@ $('#btnStop').onclick=()=>{stopRoutine();setMode('rel');send(RELEASE)};
 let tab='L';
 const TABS={L:['Left leg','left leg'],R:['Right leg','right leg'],X:['Arms and extras','extras']};
 const defOf=j=>DEF.find(d=>d.id===j.id)||{ch:j.ch,sign:1,trim:0,lo:730,hi:2270};
-function resetJ(j){const d=defOf(j);Object.assign(j,{ch:d.ch,sign:d.sign,trim:d.trim,lo:d.lo,hi:d.hi,on:d.on??true});tgt[j.id]=clampA(j,tgt[j.id]||0,usDeg);sv()}
+// real measured angles at the two stops -> this joint's own µs per degree (replaces the model/global value)
+function applyAngles(j,l,h){const u=(j.hi-j.lo)/(h-l);if(!(l<=0&&h>=0&&u>=3&&u<=30))return false;j.usd=Math.round(u*100)/100;j.amin=l;j.amax=h;tgt[j.id]=clampA(j,tgt[j.id]||0,U(j));sv();return true}
+function resetJ(j){const d=defOf(j);delete j.usd;delete j.amin;delete j.amax;Object.assign(j,{ch:d.ch,sign:d.sign,trim:d.trim,lo:d.lo,hi:d.hi,on:d.on??true});tgt[j.id]=clampA(j,tgt[j.id]||0,U(j));sv()}
 function clash(){const seen={},d=[];joints.forEach(j=>{if(seen[j.ch]!==undefined)d.push(j.ch);seen[j.ch]=1});$('#clash').textContent=d.length?'Channel '+[...new Set(d)].join(', ')+' is used by two joints.':''}
-function paint(row,j){const [l,h]=angLim(j,usDeg),a=(Math.max(-90,l)+90)/1.8,b=(Math.min(90,h)+90)/1.8;
+function paint(row,j){const [l,h]=angLim(j,U(j)),a=(Math.max(-90,l)+90)/1.8,b=(Math.min(90,h)+90)/1.8;
   row.querySelector('.ts').style.setProperty('--g','linear-gradient(to right,var(--off) '+a+'%,var(--on) '+a+'%,var(--on) '+b+'%,var(--off) '+b+'%)')}
-function sync(row,j){row.querySelectorAll('input[data-k]').forEach(i=>{if(i.type==='checkbox')i.checked=!!j[i.dataset.k];else if(document.activeElement!==i)i.value=j[i.dataset.k]});row.classList.toggle('off',!j.on);row.querySelector('[data-a=cal]').disabled=!j.on;
+function sync(row,j){row.querySelectorAll('input[data-k]').forEach(i=>{if(i.type==='checkbox')i.checked=!!j[i.dataset.k];else if(document.activeElement!==i){const k=i.dataset.k,[l,h]=angLim(j,U(j));i.value=k==='amin'?Math.round((j.amin??l)*10)/10:k==='amax'?Math.round((j.amax??h)*10)/10:j[k]}});row.classList.toggle('off',!j.on);row.querySelector('[data-a=cal]').disabled=!j.on;
   row.querySelector('.ch').textContent='ch '+j.ch;row.querySelector('[data-a=sign]').textContent='Direction '+(j.sign>0?'+':'−');paint(row,j)}
 function renderJoints(){
   const box=$('#jt');box.innerHTML='';
@@ -416,14 +460,19 @@ function renderJoints(){
       +'<label>Channel<input data-k="ch" type="number" min="0" max="15"></label>'
       +'<label>Centre µs<input data-k="trim" type="number"></label>'
       +'<label>Low stop µs<input data-k="lo" type="number"></label>'
-      +'<label>High stop µs<input data-k="hi" type="number"></label></div>'
+      +'<label>High stop µs<input data-k="hi" type="number"></label>'
+      +'<label>Min angle °<input data-k="amin" type="number" step="0.5"></label>'
+      +'<label>Max angle °<input data-k="amax" type="number" step="0.5"></label></div>'
       +'<div class="row mt nudge"><button data-n="-10">−10</button><button data-n="-1">−1</button><button data-n="1">+1</button><button data-n="10">+10</button><span class="pulse">Pulse <b class="cus">1500</b> µs</span></div>'
       +'<div class="row mt"><button data-a="sc">Set centre</button><button data-a="sl">Set low stop</button><button data-a="sh">Set high stop</button><button data-a="sign"></button><button data-a="rj">Reset joint</button>'+(j.extra?'<button data-a="del">Remove joint</button>':'')+'</div>'
-      +'<p class="note">Only this servo is driven. Centre is the joint straight. Stops are the two mechanical ends, backed off a little. A knee or elbow only bends one way.</p></div>';
+      +'<p class="note">Only this servo is driven. Centre is the joint straight. Stops are the two mechanical ends, backed off a little. Min and Max angle are what you measure at those stops (a protractor or phone level); the squat, sweep and walk then stay inside them. A knee or elbow only bends one way.</p></div>';
     const ts=row.querySelector('.ts');
-    row.querySelectorAll('input[data-k]').forEach(i=>i.onchange=()=>{const k=i.dataset.k;if(k==='on'&&!i.checked&&calJ===j)setMode('rel');j[k]=k==='name'?i.value:k==='on'?i.checked:+i.value;tgt[j.id]=clampA(j,tgt[j.id],usDeg);sv();clash();sync(row,j)});
-    ts.oninput=()=>{stopRoutine();tgt[j.id]=clampA(j,+ts.value,usDeg);ts.value=Math.round(tgt[j.id])};
-    row.querySelector('[data-a=sign]').onclick=()=>{j.sign*=-1;tgt[j.id]=clampA(j,tgt[j.id],usDeg);sv();sync(row,j)};
+    row.querySelectorAll('input[data-k]').forEach(i=>i.onchange=()=>{const k=i.dataset.k;if(k==='on'&&!i.checked&&calJ===j)setMode('rel');
+      if(k==='amin'||k==='amax'){const [l,h]=angLim(j,U(j));if(!applyAngles(j,k==='amin'?+i.value:j.amin??l,k==='amax'?+i.value:j.amax??h))alertMsg('Angles need min ≤ 0 ≤ max and 3–30 µs per degree.');else alertMsg('')}
+      else{j[k]=k==='name'?i.value:k==='on'?i.checked:+i.value;if(k!=='name'&&k!=='on'){delete j.amin;delete j.amax}}
+      tgt[j.id]=clampA(j,tgt[j.id],U(j));sv();clash();sync(row,j)});
+    ts.oninput=()=>{stopRoutine();tgt[j.id]=clampA(j,+ts.value,U(j));ts.value=Math.round(tgt[j.id])};
+    row.querySelector('[data-a=sign]').onclick=()=>{j.sign*=-1;tgt[j.id]=clampA(j,tgt[j.id],U(j));sv();sync(row,j)};
     row.querySelector('[data-a=cal]').onclick=()=>{ if(wz)wzHide(); if(row.classList.contains('open')){setMode('rel');return}
       closePanels();row.classList.add('open');row.querySelector('.cp').hidden=false;row.querySelector('[data-a=cal]').setAttribute('aria-expanded','true');
       calJ=j;calUs=calOut=1500+j.trim;setMode('cal')};
@@ -444,14 +493,13 @@ $('#bAdd').onclick=()=>{const used=new Set(joints.map(j=>j.ch));let ch=0;while(u
   const n=joints.filter(j=>j.extra).length+1;joints.push({id:'x'+Date.now(),name:'Arm joint '+n,ch:Math.min(ch,15),sign:1,trim:0,lo:730,hi:2270,extra:true,side:'X',on:true});sv();renderJoints()};
 
 // ---------- settings ----------
-$('#usd').value=usDeg;$('#dps').value=maxDps;
-$('#usd').onchange=e=>{usDeg=+e.target.value||11;sv();document.querySelectorAll('.jr').forEach(r=>paint(r,J(r.dataset.j)))};
-$('#dps').onchange=e=>{maxDps=+e.target.value||60;sv()};
+$('#usd').value=usDeg;setDps(maxDps);
+$('#usd').onchange=e=>{usDeg=+e.target.value||11;sv();document.querySelectorAll('.jr').forEach(r=>sync(r,J(r.dataset.j)))};
 $('#bExp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({joints,usDeg,maxDps},null,1)],{type:'application/json'}));a.download='microwrestler-settings.json';a.click()};
 $('#bImp').onchange=async e=>{try{const o=JSON.parse(await e.target.files[0].text());
   if(!Array.isArray(o.joints)||!o.joints.every(j=>j.id&&Number.isInteger(j.ch)&&[j.trim,j.lo,j.hi].every(Number.isFinite)))throw Error('not a settings file');
-  joints=norm(o.joints);usDeg=+o.usDeg||11;maxDps=+o.maxDps||60;$('#usd').value=usDeg;$('#dps').value=maxDps;sv();setMode('rel');renderJoints();msg('Settings imported.')}catch(err){msg('Import failed: '+err.message,1)}e.target.value=''};
-$('#bRes').onclick=()=>{if(confirm('Reset all joints and settings to defaults?')){joints=DEF.map(j=>({...j}));usDeg=11;maxDps=60;$('#usd').value=11;$('#dps').value=60;sv();setMode('rel');renderJoints()}};
+  joints=norm(o.joints);usDeg=+o.usDeg||11;setDps(+o.maxDps||120);$('#usd').value=usDeg;sv();setMode('rel');renderJoints();msg('Settings imported.')}catch(err){msg('Import failed: '+err.message,1)}e.target.value=''};
+$('#bRes').onclick=()=>{if(confirm('Reset all joints and settings to defaults?')){joints=DEF.map(j=>({...j}));usDeg=11;setDps(120);$('#usd').value=11;sv();setMode('rel');renderJoints()}};
 
 // ---------- guided calibration ----------
 // Per installed joint: 1 centre, 2 direction (known joints), 3 negative end, 4 positive end, 5 range test.
@@ -462,10 +510,10 @@ const HOW={yaw:{c:'the foot pointing straight ahead',pos:'the toes turn inward',
   roll:{c:'the foot level from side to side',pos:'the inner edge of the foot goes down',neg:'the outer edge of the foot goes down'}};
 const hid=j=>j.id.replace(/^r_/,''),known=j=>!!HOW[hid(j)];
 const howOf=j=>HOW[hid(j)]||{c:'the joint straight',pos:'it moves the + way',neg:'it moves the − way'};
-const stepsOf=j=>known(j)?['centre','dir','neg','pos','test']:['centre','neg','pos','test'];
+const stepsOf=j=>known(j)?['centre','dir','neg','pos','angle','test']:['centre','neg','pos','angle','test'];
 const wzJ=()=>wz&&wz.ji>=0&&wz.ji<wz.list.length?wz.list[wz.ji]:null;
 const wzStep=()=>!wz?'':wz.ji<0?'intro':wz.ji>=wz.list.length?'outro':stepsOf(wzJ())[wz.si];
-const cen=j=>1500+j.trim,margin=()=>Math.round(3*usDeg); // back off ~3° from a stop so the servo never rests against it
+const cen=j=>1500+j.trim,margin=j=>Math.round(3*U(j)); // back off ~3° from a stop so the servo never rests against it
 const clampUs=v=>Math.min(2500,Math.max(500,v));
 function wzStart(){
   const list=joints.filter(j=>(j.side||'X')===tab&&j.on);
@@ -479,16 +527,17 @@ function wzEnter(){
   const j=wzJ(),s=wzStep();calJ=j;wz.play=null;
   if(j){const c=cen(j);
     if(s==='centre')calUs=calOut=c;
-    else if(s==='dir')calUs=c+j.sign*15*usDeg;
+    else if(s==='dir')calUs=c+j.sign*15*U(j);
     else if(s==='neg'||s==='pos')calUs=c;
+    else if(s==='angle'&&j.hi<=j.lo)return wzAdvance(); // no travel was found, nothing to measure
     else if(s==='test'){const t=wz.tmp[j.id]||{};wz.play=[t.neg??c,t.pos??c,c];calUs=wz.play[0]}}
   setMode('cal');wzRender();
 }
 function wzAdvance(){const j=wzJ();wz.si++;if(wz.si>=stepsOf(j).length){wz.done.add(j.id);wz.ji++;wz.si=0}wzEnter()}
 function wzBack(){if(wz.si>0)wz.si--;else if(wz.ji>=0){wz.ji--;wz.si=wz.ji>=0?stepsOf(wz.list[wz.ji]).length-1:0}wzEnter()}
-function wzEnd(j,key,skip){const c=cen(j),t=calUs,end=skip||Math.abs(t-c)<=margin()?c:clampUs(t+(c>t?1:-1)*margin()); // travel shorter than the back-off counts as no travel, never back off past centre
+function wzEnd(j,key,skip){const c=cen(j),t=calUs,end=skip||Math.abs(t-c)<=margin(j)?c:clampUs(t+(c>t?1:-1)*margin(j)); // travel shorter than the back-off counts as no travel, never back off past centre
   (wz.tmp[j.id]??={})[key]=end;
-  if(key==='pos'){const m=wz.tmp[j.id];j.lo=Math.min(m.neg??c,end);j.hi=Math.max(m.neg??c,end);tgt[j.id]=clampA(j,0,usDeg);sv();renderJoints()}}
+  if(key==='pos'){delete j.amin;delete j.amax;const m=wz.tmp[j.id];j.lo=Math.min(m.neg??c,end);j.hi=Math.max(m.neg??c,end);tgt[j.id]=clampA(j,0,U(j));sv();renderJoints()}}
 function wzNudge(n){const j=wzJ();if(!j)return;calUs=clampUs(calUs+(wzStep()==='centre'?1:j.sign)*n)}
 function wzAct(act,arg){
   const j=wzJ(),s=wzStep();
@@ -498,8 +547,11 @@ function wzAct(act,arg){
     if(s==='centre'){j.trim=Math.round(calUs-1500);sv();renderJoints()}
     else if(s==='neg')wzEnd(j,'neg');else if(s==='pos')wzEnd(j,'pos');
     wzAdvance()}
-  else if(act==='skip'){wzEnd(j,s,1);wzAdvance()}
-  else if(act==='flip'){j.sign*=-1;sv();renderJoints();calUs=cen(j)+j.sign*15*usDeg;wz.flipped=true;wzRender()}
+  else if(act==='skip'){if(s!=='angle')wzEnd(j,s,1);wzAdvance()}
+  else if(act==='ang'){const [l,h]=angLim(j,U(j)),a=+$('#wzMin').value,b=+$('#wzMax').value;
+    if(!applyAngles(j,a,b)){$('#wzAerr').textContent='Needs min ≤ 0 ≤ max, and 3–30 µs per degree for the span you set.';return}
+    renderJoints();wzAdvance()}
+  else if(act==='flip'){j.sign*=-1;sv();renderJoints();calUs=cen(j)+j.sign*15*U(j);wz.flipped=true;wzRender()}
   else if(act==='back')wzBack();
   else if(act==='replay'){const t=wz.tmp[j.id]||{},c=cen(j);wz.play=[t.neg??c,t.pos??c,c];calUs=wz.play[0]}
   else if(act==='cancel'){stopRoutine();setMode('rel');send(RELEASE)}
@@ -528,6 +580,10 @@ function wzRender(){
     else if(s==='neg'||s==='pos'){const neg=s==='neg';
       h=head+'<h2>'+esc(j.name)+': find the '+(neg?'− end':'+ end')+'</h2><p class="wzp">Press <b>'+(neg?'−':'+')+'</b> until <b>'+(neg?w.neg:w.pos)+'</b> and the joint touches its mechanical stop. <b>Stop the moment it touches.</b> Pushing on a stop strains the servo. Then press the button below; I back off 3° for you.</p>'+pulse+nudge('Buttons move the joint in angle: − and + match the labels above.')
         +nav(["It's touching"],'<button data-act="skip">It can\'t move this way</button>')}
+    else if(s==='angle'){const [l,h2]=angLim(j,U(j)),r1=v=>Math.round(v*10)/10;
+      h=head+'<h2>'+esc(j.name)+': measure the real angles</h2><p class="wzp">The numbers below come from the model. Replace them with what you measure at each stop (centre = 0°). The animations will use these, so the leg never goes past what you measured. Skip to keep the model values.</p>'
+        +'<div class="cg"><label>Min angle °<input id="wzMin" type="number" step="0.5" value="'+r1(j.amin??l)+'"></label><label>Max angle °<input id="wzMax" type="number" step="0.5" value="'+r1(j.amax??h2)+'"></label></div><p class="note warn" id="wzAerr"></p>'
+        +nav(['Save angles','ang'],'<button data-act="skip">Skip</button>')}
     else if(s==='test')h=head+'<h2>'+esc(j.name)+': watch the range</h2><p class="wzp">The joint sweeps from one end to the other and back to centre. It should move smoothly and never press on a stop.</p>'+pulse+nav(['Looks good'],'<button data-act="replay">Replay</button>')
   }
   el.innerHTML=h;
@@ -539,7 +595,7 @@ function wzTick(){
   if(!wz)return;const j=wzJ(),s=wzStep();
   if(wz.play&&wz.play.length>1&&Math.abs(calUs-calOut)<1){wz.play.shift();calUs=wz.play[0]}
   const u=$('#wzUs');if(u)u.textContent=Math.round(calOut);
-  if(j&&s!=='centre'){const a=Math.max(-90,Math.min(90,j.sign*(calOut-cen(j))/usDeg));cur[j.id]=tgt[j.id]=a;const g=$('#wzAng');if(g)g.textContent=a.toFixed(0)+'°'} // the picture follows the servo
+  if(j&&s!=='centre'){const a=Math.max(-90,Math.min(90,j.sign*(calOut-cen(j))/U(j)));cur[j.id]=tgt[j.id]=a;const g=$('#wzAng');if(g)g.textContent=a.toFixed(0)+'°'} // the picture follows the servo
 }
 $('#bGuide').onclick=wzStart;
 
@@ -590,20 +646,21 @@ async function init3d(){
 }
 init3d().catch(e=>{const m=$('#glmsg');m.hidden=false;m.textContent='The 3D view could not start ('+e.message+'). Controls still work.';$('#cv').style.display='none';document.querySelector('.views').hidden=true});
 
+setDps(maxDps);refreshDepth();
 // ---------- loop ----------
 let last=performance.now(),lastPel='';
 setInterval(()=>{
   const now=performance.now(),dt=Math.min(.1,(now-last)/1000);last=now;
-  if(routine&&routine.fn(now/1000-routine.t0)===false)routine=null;
+  if(routine){routine.t+=dt*speed;if(routine.fn(routine.t)===false)routine=null}
   joints.forEach(j=>cur[j.id]=slew(cur[j.id]||0,tgt[j.id]||0,dt,maxDps));
   if(mode==='cal')calOut+=Math.max(-10,Math.min(10,calUs-calOut)); // 500 µs/s so a servo never snaps into a stop
-  wzTick();
+  wzTick();walkLag();
   const f=frame();if(f!==lastF||now-lastSend>250){send(f);lastF=f;lastSend=now}
   {const pl=fk(legAng('L')),pr=fk(legAng('R'));pose={shift:Math.max(pl.shift,pr.shift)}} // pelvis rests on the longer leg
   if(gl)gl.update();
   const pt='Pelvis '+(pose.shift<-.05?'−'+(-pose.shift).toFixed(1):'0.0')+' mm';if(pt!==lastPel){$('#pel').textContent=pt;lastPel=pt}
   document.querySelectorAll('.jr').forEach(r=>{const j=J(r.dataset.j),a=cur[j.id]||0;
-    r.querySelector('.ja').innerHTML='<b>'+a.toFixed(1)+'°</b> · '+toUs(j,a,usDeg)+' µs';
+    r.querySelector('.ja').innerHTML='<b>'+a.toFixed(1)+'°</b> · '+toUs(j,a,U(j))+' µs';
     const ts=r.querySelector('.ts');if(document.activeElement!==ts)ts.value=Math.round(tgt[j.id]||0);
     if(calJ===j)r.querySelector('.cus').textContent=calUs});
 },20);

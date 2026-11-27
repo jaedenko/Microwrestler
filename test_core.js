@@ -9,7 +9,7 @@ q=C.legIK(15);[-37.411,63.660,-26.249].forEach((v,i)=>near(q[i],v));
 a.strictEqual(C.legIK(-5),null);
 const knee={...C.DEF[2]};let [l,hh]=C.angLim(knee,11);near(l,-70);near(hh,70);                       // 90 deg servo = straight: bends both ways
 [l,hh]=C.angLim({...knee,lo:1500},11);near(l,0);near(hh,70);                // a one-sided knee is still possible
-a.strictEqual(C.toUs(C.DEF[1],10,11),1610);
+a.strictEqual(C.toUs(C.DEF[1],10,11),1390);
 near(C.slew(0,100,.02,60),1.2);
 const n=C.fk([0,0,0,0,0]);near(n.shift,0,1e-9);
 const s=C.fk([0,...C.legIK(8),0]);near(s.shift,-8,.05);                 // pelvis drops 8 mm
@@ -22,3 +22,7 @@ a.ok(C.DEF.slice(5).every((j,i)=>j.id==='r_'+C.DEF[i].id&&j.lo===C.DEF[i].lo));
 const kb=C.legIK(8,true);a.ok(kb[1]<-40&&kb[0]>20,kb);                                // knee-backward solution: hip +, knee -
 const fb=C.fk([0,...kb,0]);near(fb.shift,-8,.05);const zz=fb.foot.map(p=>p[2]);near(Math.max(...zz)-Math.min(...zz),0,.05);
 console.log('CORE PASS',kb.map(v=>+v.toFixed(2)));
+// hip default is reversed; per-joint µs/deg changes the pulse
+a.strictEqual(C.DEF[1].sign,-1);
+a.strictEqual(C.toUs(C.DEF[1],10,20),1300);
+console.log('hip sign + usd OK');

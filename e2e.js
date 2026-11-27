@@ -15,9 +15,9 @@ const until=async(f,ms=8000)=>{const t=Date.now();while(Date.now()-t<ms){if(awai
 await p.click('[data-m=horn]');await tick(150);a.strictEqual(await last(),P(1500,1500,1500,1500,1500));
 await p.click('[data-m=run]');await tick(150);a.strictEqual(await last(),P(1500,1500,1500,1500,1500));
 await p.fill('#dz','8');await p.dispatchEvent('#dz','input');
-await until(P(1208,2001,1291,1500,1500));
-await p.click('[data-kn=back]');await until(P(1822,946,1732,1500,1500));                                   // knee-backward squat: knee servo goes BELOW 90 deg (1500 us)
-await p.click('[data-kn=fwd]');await until(P(1208,2001,1291,1500,1500));                       // hip -26.5, knee +45.5, ankle -19 deg x 11 us
+await until(P(1792,2001,1291,1500,1500));
+await p.click('[data-kn=back]');await until(P(1178,946,1732,1500,1500));                                   // knee-backward squat: knee servo goes BELOW 90 deg (1500 us)
+await p.click('[data-kn=fwd]');await until(P(1792,2001,1291,1500,1500));                       // hip -26.5, knee +45.5, ankle -19 deg x 11 us
 await p.screenshot({path:'sq3d.png'});
 await p.click('#btnStop');await tick(100);a.strictEqual(await last(),P());
 await p.click('#jt [data-j=knee] [data-a=cal]');await tick(100);a.strictEqual(await last(),P(0,1500));
@@ -26,8 +26,8 @@ await p.click('#jt [data-j=knee] [data-a=cal]');
 await p.click('[data-t=R]');a.ok(await p.locator('#jt [data-j=r_knee] [data-a=cal]').isDisabled());
 await p.check('#jt [data-j=r_knee] [data-k=on]');await p.click('#jt [data-j=r_knee] [data-a=cal]');await tick(100);a.strictEqual(await last(),P(0,0,0,0,0,0,1500));
 await p.fill('#jt [data-j=r_knee] [data-k=hi]','1700');await p.dispatchEvent('#jt [data-j=r_knee] [data-k=hi]','change');
-await p.click('#jt [data-j=r_knee] [data-a=cal]');await p.fill('#dz','10');await p.dispatchEvent('#dz','input');
-const m=await p.textContent('#mmsg');a.ok(/right knee/.test(m)&&!/left/.test(m),m);
+await p.click('#jt [data-j=r_knee] [data-a=cal]');
+a.ok(+await p.getAttribute('#dz','max')<8,'slider capped by the right knee stop');a.ok(/Deepest squat/.test(await p.textContent('#dzmax')));
 await p.click('#jt [data-j=r_knee] [data-a=cal]');await p.click('#jt [data-j=r_knee] [data-a=rj]');
 a.strictEqual(await p.isChecked('#jt [data-j=r_knee] [data-k=on]'),false);       // reset joint -> back to not installed
 await p.click('[data-t=L]');
@@ -40,19 +40,19 @@ await tick(80);a.strictEqual(await last(),P(1500,0,0,0,1500));                  
 const n=(v)=>p.click('[data-act=n][data-arg="'+v+'"]');
 await n(10);await n(10);await until(P(1520,0,0,0,1500));
 await p.screenshot({path:'wiz-centre.png'});
-await p.click('[data-act=next]');await until(P(1685,0,0,0,1500));                                       // direction check: servo goes to +15 deg
+await p.click('[data-act=next]');await until(P(1355,0,0,0,1500));                                       // direction check: servo goes to +15 deg
 await p.screenshot({path:'wiz-dir.png'});
 await p.click('[data-act=next]');await tick(900);                                                         // "yes": negative end
 for(let i=0;i<5;i++)await n(-10);await tick(500);await p.screenshot({path:'wiz-neg.png'});
 await p.click('[data-act=next]');await tick(900);                                                         // touching at 1470 -> backed off to 1503
 for(let i=0;i<5;i++)await n(10);await tick(500);await p.click('[data-act=next]');                         // touching at 1570 -> 1537
-await tick(100);await p.click('[data-act=next]');                                                         // range test ok
-const get=id=>p.evaluate(i=>JSON.parse(localStorage.getItem('wb3.joints')).find(j=>j.id===i),id);
-let hip=await get('hip');a.deepStrictEqual([hip.trim,hip.lo,hip.hi,hip.sign],[20,1503,1537,1]);
+await tick(100);await p.click('[data-act=skip]');await p.click('[data-act=next]');                         // keep model angles; range test ok
+const get=id=>p.evaluate(i=>JSON.parse(localStorage.getItem('wb4.joints')).find(j=>j.id===i),id);
+let hip=await get('hip');a.deepStrictEqual([hip.trim,hip.lo,hip.hi,hip.sign],[20,1503,1537,-1]);
 // knee bends BOTH ways: 50 us either side of centre
 await p.click('[data-act=next]');await p.click('[data-act=next]');
 for(let i=0;i<5;i++)await n(-10);await tick(300);await p.click('[data-act=next]');
-for(let i=0;i<5;i++)await n(10);await tick(300);await p.click('[data-act=next]');await p.click('[data-act=next]');
+for(let i=0;i<5;i++)await n(10);await tick(300);await p.click('[data-act=next]');await p.click('[data-act=skip]');await p.click('[data-act=next]');
 const knee=await get('knee');a.deepStrictEqual([knee.lo,knee.hi],[1483,1517]);
 // ankle: wrong direction -> flip; roll: just click through
 for(const s of ['next','flip','next','skip','skip','next'])await p.click('[data-act='+s+']');
@@ -60,6 +60,19 @@ a.strictEqual((await get('ankle')).sign,-1);
 for(const s of ['next','next','skip','skip','next'])await p.click('[data-act='+s+']');
 await p.waitForSelector('#wiz [data-act=finish]');await p.screenshot({path:'wiz-done.png'});
 await p.click('[data-act=finish]');await until(P(1520,1500,1500,1500,1500));                            // Run holds the new centres
+// ---- measured angles: knee 34 us span, 17 deg either side -> 1 us/deg is below the 3 limit, so rejected; 3 us/deg accepted
+await p.click('[data-m=rel]');await p.click('#jt [data-j=knee] [data-a=cal]');
+await p.fill('#jt [data-j=knee] [data-k=amin]','-5');await p.dispatchEvent('#jt [data-j=knee] [data-k=amin]','change');
+await p.fill('#jt [data-j=knee] [data-k=amax]','5.67');await p.dispatchEvent('#jt [data-j=knee] [data-k=amax]','change');
+a.strictEqual((await get('knee')).usd,3.19);
+const ml=await p.evaluate(()=>document.querySelector('[data-j=knee] [data-k=amax]').value);a.strictEqual(+ml,5.67);
+await p.click('#jt [data-j=knee] [data-a=cal]');
+// ---- speed slider drives the servo limit; walk stays inside calibrated limits
+await p.fill('#dpsr','200');await p.dispatchEvent('#dpsr','input');a.strictEqual(await p.evaluate(()=>localStorage.getItem('wb4.maxDps')),'200');
+await p.click('[data-m=run]');await p.fill('#spd','2');await p.dispatchEvent('#spd','input');
+await p.click('#bWalk');await tick(2500);
+const hipLim=await get('hip');const fr=await last();const u0=+fr.split(' ')[1];a.ok(u0>=hipLim.lo&&u0<=hipLim.hi,'walk hip '+u0);
+await p.click('#bWalk');
 // ---- connection diagnostics: no reply from the Nano -> visible warning
 await p.screenshot({path:'desk.png'});
 await p.setViewportSize({width:390,height:844});await tick(200);await p.screenshot({path:'mob.png'});
@@ -69,5 +82,6 @@ await q.goto('http://localhost:8123/index.html');await q.waitForSelector('#jt .j
 const mk=await q.evaluate(()=>[...document.querySelectorAll('#jt .jr')].length);a.strictEqual(mk,5);
 await q.evaluate(()=>document.querySelector('[data-j=knee] [data-a=cal]').click());
 await q.fill('[data-j=knee] [data-k=hi]','2270');await q.dispatchEvent('[data-j=knee] [data-k=hi]','change');
-const saved=await q.evaluate(()=>JSON.parse(localStorage.getItem('wb3.joints')).find(j=>j.id==='knee'));a.deepStrictEqual([saved.lo,saved.trim,saved.sign],[730,12,-1]);
+const saved=await q.evaluate(()=>JSON.parse(localStorage.getItem('wb4.joints')).find(j=>j.id==='knee'));a.deepStrictEqual([saved.lo,saved.trim,saved.sign],[730,12,-1]);
+const hs=await q.evaluate(()=>JSON.parse(localStorage.getItem('wb4.joints')).find(j=>j.id==='hip').sign);a.strictEqual(hs,-1);   // old saved +1 hip flips once
 console.log(errs);a.deepStrictEqual(errs.filter(e=>!/fonts\.g|ERR_|Failed to load resource/.test(e)),[]);console.log('E2E PASS');await b.close()})().catch(e=>{console.error(e);process.exit(1)});
