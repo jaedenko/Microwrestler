@@ -74,6 +74,16 @@ await pg('ctl');await p.click('[data-m=run]');await pg('walk');await p.fill('#sp
 await p.click('#bWalk');await tick(2500);
 const hipLim=await get('hip');const fr=await last();const u0=+fr.split(' ')[1];a.ok(u0>=hipLim.lo&&u0<=hipLim.hi,'walk hip '+u0);
 await p.click('#bWalk');
+// ---- leg controls on the dashboard: right leg only leaves the left leg at neutral
+await pg('dash');await p.click('[data-leg=R]');await p.click('#modes2 [data-m=run]');
+await pg('ports');await p.check('#pt tr[data-j=r_hip] input');await pg('dash');await p.click('[data-do=loop]');await tick(2500);
+const fR=(await last()).split(' ');a.strictEqual(+fR[1],1520);a.ok(fR.slice(6,9).some(v=>+v!==1500&&+v>0),'right leg moves: '+fR.join(' '));  // left hip ch0 stays 1500; right ch5-7 move
+await p.click('[data-do=loop]');await p.click('[data-leg=B]');
+// ---- ports panel: reassign the left knee to port 6, then back
+await pg('ports');await p.selectOption('#pt tr[data-j=knee] select','6');await pg('dash');await p.click('#modes2 [data-m=horn]');await tick(200);
+a.strictEqual((await last()).split(' ')[7],'1500');a.strictEqual((await last()).split(' ')[2],'0');
+await pg('ports');await p.selectOption('#pt tr[data-j=knee] select','1');
+await p.click('#pt tr[data-j=hip] [data-a=rev]');a.strictEqual((await get('hip')).sign,1);await p.click('#pt tr[data-j=hip] [data-a=rev]');
 // ---- dashboard shows live joints and system rows
 await pg('dash');await tick(500);a.ok(await p.locator('#live tr').count()>=4);a.ok(/Connection/.test(await p.textContent('#sys')));
 // ---- connection diagnostics: no reply from the Nano -> visible warning

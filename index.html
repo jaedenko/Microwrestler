@@ -150,6 +150,8 @@ input[type=range].ts{background:linear-gradient(var(--ink),var(--ink)) center/2p
 .kpis small{display:block;color:var(--mut);font-size:12.5px}.kpis b{font-family:var(--disp);font-size:18px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 @media (max-width:980px){.nav{padding:0 16px}.kpis{padding:0 16px 12px;grid-template-columns:repeat(2,minmax(0,1fr))}}
 .pg-off{display:none!important}
+.pmap{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px;margin-top:10px}.pmap div{border:1px solid var(--line);border-radius:8px;padding:4px 6px;font-size:12px;min-height:44px;background:var(--card)}.pmap b{display:block;font-size:11px;color:var(--mut)}.pmap .used{background:var(--field)}.pmap .dup{border-color:var(--bad,#c0392b)}
+#pt select{min-height:34px}
 .live{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
 .live th{text-align:left;color:var(--mut);font-weight:500}.live td,.live th{padding:4px 6px;border-bottom:1px solid var(--line)}
 .live .z{color:var(--mut)}.live th[scope],#sys th{width:40%}
@@ -184,7 +186,7 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
   </div>
 </header>
 <nav class="nav" id="nav" aria-label="Dashboard sections">
-  <button data-p="dash">Dashboard</button><button data-p="ctl">Control</button><button data-p="walk">Walk</button><button data-p="cal">Calibration</button><button data-p="set">Setup</button>
+  <button data-p="dash">Dashboard</button><button data-p="ctl">Control</button><button data-p="walk">Walk</button><button data-p="cal">Calibration</button><button data-p="ports">Ports</button><button data-p="set">Setup</button>
 </nav>
 <div class="kpis" id="kpis" aria-label="Status"><div><small>Servos</small><b id="kMode">Released</b></div><div><small>Running</small><b id="kRun">Nothing</b></div><div><small>Speed</small><b id="kSpd">1.00×</b></div><div><small>Servo limit</small><b id="kDps">120°/s</b></div><div><small>Deepest squat</small><b id="kDep">0 mm</b></div></div>
 <div id="alert" class="banner" role="alert" hidden></div>
@@ -252,6 +254,14 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
       <p class="note">Each leg is calibrated on its own tab. The slider on a joint's row shows its angle and the shaded part is the range you set. Open Calibrate on a joint to drag its servo and set min and max. If the real joint moves the opposite way to the picture, flip its direction.</p>
     </section>
 
+    <section class="card" data-page="dash" aria-labelledby="hLeg">
+      <h2 id="hLeg">Leg controls</h2>
+      <div class="row" role="group" aria-label="Which leg"><span class="note" style="margin:0">Leg</span><button data-leg="L" aria-pressed="false">Left</button><button data-leg="R" aria-pressed="false">Right</button><button data-leg="B" class="btn-pri" aria-pressed="true">Both</button></div>
+      <div class="row mt" id="modes2" role="group" aria-label="Servo mode"><span class="note" style="margin:0">Servos</span><button data-m="rel">Released</button><button data-m="horn">Horn 90°</button><button data-m="run">Run</button></div>
+      <div class="row mt"><button data-do="loop">Squat loop</button><button data-do="walk">Walk</button><button data-do="sweep">Sweep joints</button><button data-do="stand">Reset pose</button></div>
+      <p class="note">Squat loop, walk and sweep drive only the leg you pick; the other leg goes back to neutral. Servos must be in Run for the real leg to follow. Depth, stride and speed are on the Control and Walk tabs.</p>
+    </section>
+
     <section class="card" data-page="dash" aria-labelledby="hLive">
       <h2 id="hLive">Live servos</h2>
       <table class="live"><thead><tr><th>Joint</th><th>Ch</th><th>Angle</th><th>Pulse</th><th>Position in calibrated range</th></tr></thead><tbody id="live"></tbody></table>
@@ -266,6 +276,14 @@ label.file:focus-within{outline:2px solid var(--pri);outline-offset:2px}
     <section class="card" data-page="dash" aria-labelledby="hTx">
       <h2 id="hTx">Serial traffic</h2>
       <pre id="log2" aria-live="off"></pre>
+    </section>
+
+    <section class="card" data-page="ports" aria-labelledby="hPorts">
+      <h2 id="hPorts">Servo ports</h2>
+      <p class="note">Pick the PCA9685 port (0–15) each joint is plugged into. It saves at once and the leg uses it on the next frame. If a servo moves the wrong way, press Reverse.</p>
+      <table class="live" id="pt"><thead><tr><th>Joint</th><th>Port</th><th>Installed</th><th>Direction</th></tr></thead><tbody></tbody></table>
+      <p class="note warn" id="ptwarn"></p>
+      <div class="pmap" id="pmap" aria-label="Port map"></div>
     </section>
 
     <section class="card" data-page="set">
@@ -361,46 +379,51 @@ const msg=(t,warn)=>{const e=$('#mmsg');e.textContent=t;e.className='note'+(warn
 const setDz=v=>{$('#dz').value=v;$('#dzv').textContent=(+v).toFixed(1)};
 
 // ---------- motion ----------
-const LEG={L:CORE,R:CORE.map(id=>'r_'+id)},SIDE={L:'Left',R:'Right'};
+const LEG={L:CORE,R:CORE.map(id=>'r_'+id)},SIDE={L:'Left',R:'Right',B:'Both'};
 const legAng=side=>LEG[side].map(id=>cur[id]||0);
-let kneeBack=false,speed=1,WALK_T=2;
+let kneeBack=false,speed=1,WALK_T=2,legSel='B';
+const sides=()=>legSel==='B'?'LR':legSel;
 // which installed joints would leave their calibrated range for this squat solution? (limits come from YOUR calibration, not the model)
 function badJoints(q){const bad=[];
-  for(const side of 'LR')['hip','knee','ankle'].forEach((n,i)=>{const id=side==='L'?n:'r_'+n,j=J(id),[l,h]=angLim(j,U(j));
+  for(const side of sides())['hip','knee','ankle'].forEach((n,i)=>{const id=side==='L'?n:'r_'+n,j=J(id),[l,h]=angLim(j,U(j));
     if(j.on&&(q[i]<l-1e-6||q[i]>h+1e-6))bad.push(SIDE[side].toLowerCase()+' '+n+' '+q[i].toFixed(1)+'°')});return bad}
 function applySquat(dz){
   const q=legIK(dz,kneeBack);
   if(!q)return msg('Unreachable: the leg is straight at neutral, so it can only shorten.',1);
   const bad=badJoints(q);
   if(bad.length)return msg('Outside your calibrated range: '+bad.join(', ')+'. Squat less or widen the stops.',1);
-  ['hip','knee','ankle'].forEach((n,i)=>{tgt[n]=q[i];tgt['r_'+n]=q[i]});
-  msg('Both legs: hip '+q[0].toFixed(1)+'°, knee '+q[1].toFixed(1)+'°, ankle '+q[2].toFixed(1)+'°');
+  ['hip','knee','ankle'].forEach((n,i)=>{tgt[n]=sides().includes('L')?q[i]:0;tgt['r_'+n]=sides().includes('R')?q[i]:0});
+  msg(SIDE[legSel]+(legSel==='B'?' legs':' leg')+': hip '+q[0].toFixed(1)+'°, knee '+q[1].toFixed(1)+'°, ankle '+q[2].toFixed(1)+'°');
   return true;
 }
 function refreshDepth(){ // deepest squat the calibrated ranges allow; the slider stops there
   const dz=$('#dz');if(!dz)return;let m=0;
   for(let d=0.5;d<=60;d+=0.5){const q=legIK(d,kneeBack);if(!q||badJoints(q).length)break;m=d}
-  dz.max=m;$('#amp').max=m;if(+dz.value>m)setDz(m);if(+$('#amp').value>m)$('#amp').value=m;
+  dz.max=m;$('#amp').max=m;if(+dz.value>m)setDz(m);
   $('#dzmax').textContent=m>0?'Deepest squat with your calibrated ranges: '+m.toFixed(1)+' mm.':'Your calibrated ranges allow no squat yet. Widen the hip, knee or ankle stops.'}
 function stand(){joints.forEach(j=>tgt[j.id]=0);setDz(0)}
-const mark=()=>{$('#bLoop').classList.toggle('btn-pri',routine?.name==='loop');$('#bWalk').classList.toggle('btn-pri',routine?.name==='walk')};
+const mark=()=>{document.querySelectorAll('#bLoop,[data-do=loop]').forEach(b=>b.classList.toggle('btn-pri',routine?.name==='loop'));document.querySelectorAll('#bWalk,[data-do=walk]').forEach(b=>b.classList.toggle('btn-pri',routine?.name==='walk'))};
+// dashboard leg controls: which leg(s) the squat / walk / sweep drive; the other leg returns to neutral
+document.querySelectorAll('[data-leg]').forEach(b=>b.onclick=()=>{legSel=b.dataset.leg;document.querySelectorAll('[data-leg]').forEach(x=>{x.classList.toggle('btn-pri',x===b);x.setAttribute('aria-pressed',x===b)});
+  const r=routine;if(!r||r.name==='sweep'){stopRoutine();stand()}else joints.forEach(j=>{if(!sides().includes(j.side))tgt[j.id]=0});refreshDepth();if(!routine&&+$('#dz').value)applySquat(+$('#dz').value)});
+document.querySelectorAll('[data-do]').forEach(b=>b.onclick=()=>({loop:()=>$('#bLoop'),walk:()=>$('#bWalk'),sweep:()=>$('#bSweep'),stand:()=>$('#bStand')}[b.dataset.do]()).click());
 const run=(name,fn)=>{routine={name,t:0,fn};mark()};
 function stopRoutine(){routine=null;mark()}
 $('#dz').oninput=e=>{stopRoutine();setDz(+e.target.value);applySquat(+e.target.value)};
 document.querySelectorAll('[data-kn]').forEach(b=>b.onclick=()=>{kneeBack=b.dataset.kn==='back';document.querySelectorAll('[data-kn]').forEach(x=>x.classList.toggle('btn-pri',x===b));stopRoutine();refreshDepth();applySquat(+$('#dz').value)});
 $('#bStand').onclick=()=>{stopRoutine();stand();msg('')};
 $('#bLoop').onclick=()=>{ if(routine&&routine.name==='loop'){stopRoutine();return}
-  run('loop',t=>{const dz=(+$('#amp').value)*(1-Math.cos(2*Math.PI*t/4))/2;setDz(dz);if(!applySquat(dz)){stopRoutine();return false}})};
+  run('loop',t=>{const dz=Math.min(+$('#amp').value,+$('#dz').max)*(1-Math.cos(2*Math.PI*t/4))/2;setDz(dz);if(!applySquat(dz)){stopRoutine();return false}})};
 // sweep: each joint goes to 90% of its calibrated range on both sides (not a fixed ±15°), one joint at a time
 $('#bSweep').onclick=()=>{stopRoutine();stand();run('sweep',t=>{const k=Math.floor(t/4);if(k>=CORE.length){stand();stopRoutine();return false}
   const x=Math.sin(2*Math.PI*(t%4)/4);
-  for(const side of 'LR')LEG[side].forEach((id,i)=>{const j=J(id),[l,h]=angLim(j,U(j));tgt[id]=i===k?0.9*(x>=0?Math.max(h,0):Math.max(-l,0))*x:0})});
+  for(const side of 'LR')LEG[side].forEach((id,i)=>{const j=J(id),[l,h]=angLim(j,U(j));tgt[id]=i===k&&sides().includes(side)?0.9*(x>=0?Math.max(h,0):Math.max(-l,0))*x:0})});
   msg('Sweeping each joint across 90% of its calibrated range, 4 s each.')};
 // walk in place: hip swings between the calibrated stride limits, knee lifts the foot in the swing half, ankle keeps the foot flat; legs half a cycle apart
 $('#bWalk').onclick=()=>{ if(routine&&routine.name==='walk'){stopRoutine();return}
   stopRoutine();stand();
   run('walk',t=>{const st=+$('#stride').value/100,lf=+$('#lift').value/100;
-    for(const side of 'LR'){const [yi,hi,ki,ai,ri]=LEG[side],H=J(hi),K=J(ki),A=J(ai),ph=(t/WALK_T+(side==='R'?.5:0))%1,[hl,hh]=angLim(H,U(H)),[kl,kh]=angLim(K,U(K));
+    for(const side of 'LR'){const [yi,hi,ki,ai,ri]=LEG[side];if(!sides().includes(side)){LEG[side].forEach(id=>tgt[id]=0);continue}const H=J(hi),K=J(ki),A=J(ai),ph=(t/WALK_T+(side==='R'?.5:0))%1,[hl,hh]=angLim(H,U(H)),[kl,kh]=angLim(K,U(K));
       const fwd=Math.min(hl,0)*st,back=Math.max(hh,0)*st,hip=(fwd+back)/2+(back-fwd)/2*Math.cos(2*Math.PI*ph);
       const bend=kneeBack?-Math.max(-kl,0):Math.max(kh,0),knee=bend*lf*Math.max(0,Math.sin(2*Math.PI*ph));
       tgt[hi]=clampA(H,hip,U(H));tgt[ki]=clampA(K,knee,U(K));tgt[ai]=clampA(A,-(hip+knee),U(A));tgt[yi]=0;tgt[ri]=0}})};
@@ -459,10 +482,10 @@ function setMode(m){
   if(wz&&m!=='cal')wzHide();
   mode=m;if(m!=='cal'){calJ=null;closePanels()}
   if(m==='horn'||m==='run'){stopRoutine();joints.forEach(j=>cur[j.id]=tgt[j.id]=0);setDz(0)} // start from neutral, never jump
-  document.querySelectorAll('#modes button').forEach(b=>{b.classList.toggle('on',b.dataset.m===m);b.setAttribute('aria-pressed',b.dataset.m===m)});
+  document.querySelectorAll('#modes button,#modes2 button').forEach(b=>{b.classList.toggle('on',b.dataset.m===m);b.setAttribute('aria-pressed',b.dataset.m===m)});
   $('#modeNote').textContent=m==='cal'?(calJ?'Calibrating '+calJ.name+': only that servo is driven.':'Guided calibration is running.'):NOTE[m];
 }
-document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+document.querySelectorAll('#modes button,#modes2 button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
 $('#btnStop').onclick=()=>{stopRoutine();setMode('rel');send(RELEASE)};
 
 // ---------- joints (one tab per leg) ----------
@@ -479,8 +502,22 @@ function paint(row,j){const [l,h]=angLim(j,U(j)),a=(Math.max(-90,l)+90)/1.8,b=(M
 function sync(row,j){row.querySelectorAll('input[data-k]').forEach(i=>{if(i.type==='checkbox')i.checked=!!j[i.dataset.k];else if(document.activeElement!==i)i.value=j[i.dataset.k]});row.classList.toggle('off',!j.on);row.querySelector('[data-a=cal]').disabled=!j.on;
   const [l,h]=angLim(j,U(j));row.querySelector('.rng').textContent='Min '+l.toFixed(1)+'°  ·  Max '+h.toFixed(1)+'°';
   row.querySelector('.ch').textContent='ch '+j.ch;row.querySelector('[data-a=sign]').textContent='Direction '+(j.sign>0?'+':'−');paint(row,j)}
+function renderPorts(){
+  const tb=document.querySelector('#pt tbody');if(!tb)return;tb.innerHTML='';
+  const nm=j=>(j.side==='L'?'Left ':j.side==='R'?'Right ':'')+j.name;
+  joints.forEach(j=>{
+    const tr=document.createElement('tr');tr.dataset.j=j.id;
+    tr.innerHTML='<td>'+esc(nm(j))+'</td><td><select aria-label="'+esc(nm(j))+' port">'+Array.from({length:16},(_,c)=>'<option value="'+c+'"'+(c===j.ch?' selected':'')+'>'+c+'</option>').join('')+'</select></td>'
+      +'<td><input type="checkbox" aria-label="'+esc(nm(j))+' installed"'+(j.on?' checked':'')+'></td><td><button data-a="rev">'+(j.sign>0?'Normal':'Reversed')+'</button></td>';
+    tr.querySelector('select').onchange=e=>{j.ch=+e.target.value;sv();renderJoints()};
+    tr.querySelector('input').onchange=e=>{j.on=e.target.checked;if(!j.on&&calJ===j)setMode('rel');sv();renderJoints()};
+    tr.querySelector('[data-a=rev]').onclick=()=>{j.sign*=-1;tgt[j.id]=clampA(j,tgt[j.id]||0,U(j));sv();renderJoints()};
+    tb.appendChild(tr)});
+  const by={};joints.forEach(j=>(by[j.ch]??=[]).push(j));
+  $('#pmap').innerHTML=Array.from({length:16},(_,c)=>{const u=by[c]||[];return '<div class="'+(u.length?'used':'')+(u.filter(j=>j.on).length>1?' dup':'')+'"><b>Port '+c+'</b>'+(u.map(j=>esc(nm(j))+(j.on?'':' (off)')).join(', ')||'free')+'</div>'}).join('');
+  const d=Object.keys(by).filter(c=>by[c].filter(j=>j.on).length>1);$('#ptwarn').textContent=d.length?'Port '+d.join(', ')+' is used by two installed joints.':''}
 function renderJoints(){
-  const box=$('#jt');box.innerHTML='';
+  renderPorts();const box=$('#jt');box.innerHTML='';
   document.querySelectorAll('.tabs [data-t]').forEach(b=>{const on=b.dataset.t===tab;b.setAttribute('aria-selected',on);b.tabIndex=on?0:-1});
   $('#bResetTab').textContent='Reset '+TABS[tab][1]+' calibration';$('#bGuide').textContent='Guided calibration: '+TABS[tab][1];$('#bAdd').hidden=tab!=='X';
   joints.forEach(j=>{cur[j.id]??=0;tgt[j.id]??=0});
